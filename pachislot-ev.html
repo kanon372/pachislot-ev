@@ -88,6 +88,13 @@
   .note.warn { background: #1a130a; border-color: #40380a; color: #cca040; }
   .note.orange { background: #140f00; border-color: #4a3510; color: #c8a870; }
 
+  /* モード切替トグル */
+  .mode-toggle { display: flex; margin-bottom: 16px; border-radius: 8px; overflow: hidden; border: 2px solid #3a3a55; }
+  .toggle-btn { flex: 1; padding: 13px; border: none; cursor: pointer; font-size: 0.9rem; font-weight: bold; transition: all 0.2s; background: #12121f; color: #666; }
+  .toggle-btn.active.reset-mode { background: #e2c04a; color: #0f0f1a; }
+  .toggle-btn.active.current-mode { background: #4a90e2; color: #fff; }
+  .toggle-btn:first-child { border-right: 1px solid #3a3a55; }
+
   /* 自動判断カード */
   .judge-card { border-radius: 10px; padding: 20px; margin-bottom: 16px; border: 2px solid; }
   .judge-card.good   { background: #0a1a0a; border-color: #4ae24a66; }
@@ -138,46 +145,82 @@
 <!-- ===== Tab5: メイン ===== -->
 <div id="tab5" class="tab-content active">
 
-  <!-- 機種・基本設定 -->
+  <!-- メイン入力 -->
   <div class="card">
-    <h2>機種・基本設定</h2>
-    <div class="form-grid">
-      <div class="form-group"><label>機種選択</label>
-        <select id="s5_machine" onchange="onSmarloMachineChange()"></select></div>
-      <div class="form-group"><label>天井ゲーム数</label>
-        <input type="number" id="s5_ceiling"  class="hl" value="1280" min="100" max="3000" oninput="calcTab5()"></div>
-      <div class="form-group"><label>AT純増枚数 (枚)</label>
-        <input type="number" id="s5_atmedals" class="hl" value="1500" min="100" max="10000" oninput="calcTab5()"></div>
-      <div class="form-group"><label>通常時 実質コスト (円/G)</label>
-        <input type="number" id="s5_cost"     class="hl" value="20"   min="1"   max="200"   oninput="calcTab5()"></div>
-      <div class="form-group"><label>メダル単価 (円)</label>
-        <input type="number" id="s5_price"            value="20"   min="1"   max="50"    oninput="calcTab5()"></div>
-    </div>
-    <div id="s5_machine_info"></div>
-  </div>
+    <h2 style="font-size:1rem;">台と状況を選ぶだけ</h2>
 
-  <!-- 現在ゲーム数 -->
-  <div class="card">
-    <h2>現在のゲーム数</h2>
-    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-      <input type="number" id="s5_current" value="0" min="0" max="9999"
-             style="width:110px;" oninput="syncSlider();calcTab5();">
-      <span style="color:#666;font-size:0.78rem;">G</span>
-      <button class="btn btn-sm btn-secondary" onclick="setG(0)">リセット(0G)</button>
-      <button class="btn btn-sm btn-secondary" onclick="setG(parseInt(document.getElementById('s5_ceiling').value||1280))">天井</button>
+    <!-- 機種選択 -->
+    <div class="form-group">
+      <label>機種</label>
+      <select id="s5_machine" onchange="onSmarloMachineChange()" style="font-size:0.95rem;padding:10px;"></select>
     </div>
-    <div style="margin-top:10px;">
-      <input type="range" id="s5_slider" min="0" max="1280" step="10" value="0"
-             oninput="syncInput();calcTab5();" style="width:100%;">
+
+    <!-- モード切替 -->
+    <div class="mode-toggle" style="margin-top:14px;">
+      <button id="btn_mode_reset"   class="toggle-btn active reset-mode"   onclick="setMode('reset')">リセット直後</button>
+      <button id="btn_mode_current" class="toggle-btn current-mode" onclick="setMode('current')">現在G数を入力</button>
     </div>
-    <div id="s5_zone_bar"></div>
+
+    <!-- G数入力（現在G数モード時のみ表示） -->
+    <div id="gcount_input_area" style="display:none;margin-top:16px;">
+      <label id="s5_g_label" style="font-size:0.76rem;color:#aaa;">現在のゲーム数</label>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:6px;">
+        <input type="number" id="s5_current" value="0" min="0" max="9999"
+               style="width:110px;" oninput="syncSlider();calcTab5();">
+        <span style="color:#666;font-size:0.78rem;">G</span>
+        <button class="btn btn-sm btn-secondary" onclick="setG(0)">0G</button>
+        <button class="btn btn-sm btn-secondary" onclick="setGCeiling()">天井</button>
+      </div>
+      <input type="range" id="s5_slider" min="0" max="1300" step="10" value="0"
+             oninput="syncInput();calcTab5();" style="width:100%;margin-top:10px;">
+      <!-- 液晶G数→実G数 変換表示（液晶G数入力の機種のみ） -->
+      <div id="s5_g_convert" style="display:none;margin-top:6px;background:#0a1a10;border:1px solid #2a4a2a;border-radius:6px;padding:8px 12px;font-size:0.78rem;color:#88cc88;"></div>
+      <div id="s5_zone_bar"></div>
+    </div>
+
+    <!-- 機種情報 -->
+    <div id="s5_machine_info"></div>
+
+    <!-- 詳細設定（折りたたみ） -->
+    <details style="margin-top:14px;">
+      <summary style="cursor:pointer;color:#555;font-size:0.78rem;padding:4px 0;user-select:none;">詳細・カスタム設定（自動入力済み）</summary>
+      <div class="form-grid" style="margin-top:12px;">
+        <div class="form-group"><label>天井ゲーム数</label>
+          <input type="number" id="s5_ceiling" class="hl" value="1300" min="100" max="3000" oninput="calcTab5()"></div>
+        <div class="form-group"><label>AT平均獲得枚数 (枚)</label>
+          <input type="number" id="s5_atmedals" class="hl" value="420" min="100" max="10000" oninput="calcTab5()"></div>
+        <div class="form-group"><label>ベット枚数</label>
+          <input type="number" id="s5_bet" value="3" min="1" max="50" oninput="autoCalcCost()"></div>
+        <div class="form-group"><label>メダル単価 (円)</label>
+          <input type="number" id="s5_price" value="20" min="1" max="50" oninput="autoCalcCost()"></div>
+        <div class="form-group"><label>50枚あたり何G</label>
+          <input type="number" id="s5_gper1k" value="34.7" min="1" max="500" step="0.1" oninput="onG50Change()"></div>
+        <div class="form-group"><label>実質コスト (円/G) ← 自動計算</label>
+          <input type="number" id="s5_cost" value="28.9" readonly
+                 style="background:#0a1a0a;border-color:#4ae24a44;color:#4ae24a;cursor:default;"></div>
+      </div>
+    </details>
   </div>
 
   <!-- 通常期待値結果 -->
-  <div class="card">
-    <h2>天井到達期待値（現在G数基準）</h2>
+  <div class="card" id="section_normal_ev" style="display:none;">
+    <h2 id="s5_ev_title">天井到達期待値（現在G数基準）</h2>
     <div class="rg" id="s5_results"></div>
     <div id="s5_badge" style="margin-top:10px;"></div>
+
+    <!-- CZ間天井狙い（東京喰種など二段階天井機種のみ） -->
+    <div id="s5_cz_section" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid #2a2a40;">
+      <div style="font-size:0.85rem;color:#4ae2a0;font-weight:bold;margin-bottom:10px;">
+        ⚡ CZ間天井狙い — <span id="s5_cz_ceil_label">600実G</span>
+      </div>
+      <div class="rg" id="s5_cz_results"></div>
+      <div id="s5_cz_badge" style="margin-top:8px;"></div>
+      <div class="note" style="background:#0a1a14;border-color:#2a4a3a;color:#88ccaa;margin-top:10px;">
+        CZ天井到達 → AT当選確率 <span id="s5_cz_atprob_label">65</span>% を加味した期待値です。<br>
+        AT天井（1200実G / 液晶1800G）まで粘る場合は上の「AT間天井狙い」をご参照ください。
+      </div>
+    </div>
+
     <div class="chart-wrap"><canvas id="s5_chart"></canvas></div>
     <div class="note warn">
       ※ 「保守的期待値」= 天井で必ずAT当選と仮定した値。実際は天井前にAT当選する分、期待値は高くなります。<br>
@@ -186,42 +229,69 @@
   </div>
 
   <!-- リセット恩恵 -->
-  <div class="reset-card">
-    <h2>リセット恩恵（設定変更・朝イチ）</h2>
+  <div class="reset-card" id="section_reset">
+    <h2>リセット後 期待値</h2>
 
-    <div class="form-grid">
-      <div class="form-group">
-        <label>AT直撃確率 (%)</label>
-        <input type="number" id="rb_direct" value="0" min="0" max="100" step="0.1" oninput="calcTab5()">
+    <!-- リセット天井 & 現在G数入力 -->
+    <div style="background:#0f0b00;border:1px solid #3a2a10;border-radius:10px;padding:16px;margin-bottom:14px;">
+
+      <!-- リセット天井表示 -->
+      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin-bottom:14px;">
+        <div style="text-align:center;">
+          <div style="font-size:0.7rem;color:#a08050;margin-bottom:2px;">リセット天井</div>
+          <div id="rb_ceil_display" style="font-size:2rem;font-weight:bold;color:#e2c04a;line-height:1;">832G</div>
+          <div style="font-size:0.65rem;color:#666;margin-top:2px;">（通常天井より短縮）</div>
+        </div>
+        <div style="flex:1;min-width:160px;">
+          <div style="font-size:0.7rem;color:#a08050;margin-bottom:2px;">AT平均獲得枚数（天井時）</div>
+          <div style="font-size:1.4rem;font-weight:bold;color:#e2934a;" id="rb_atmedals_display">834枚</div>
+          <div style="font-size:0.65rem;color:#666;margin-top:2px;">= <span id="rb_return_display">16,680</span>円のリターン</div>
+        </div>
       </div>
-      <div class="form-group">
-        <label>高確率状態 移行確率 (%)</label>
-        <input type="number" id="rb_highprob" value="0" min="0" max="100" step="1" oninput="calcTab5()">
+
+      <!-- 現在G数入力 -->
+      <div>
+        <label style="font-size:0.8rem;color:#e2c04a;font-weight:bold;">現在のゲーム数（リセット後）</label>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+          <input type="number" id="rb_current_g" value="0" min="0" max="832"
+                 style="width:100px;font-size:1rem;padding:8px;" oninput="syncResetSlider();calcTab5();">
+          <span style="color:#a08050;">G</span>
+          <button class="btn btn-sm btn-secondary" onclick="document.getElementById('rb_current_g').value=0;syncResetSlider();calcTab5();">0G</button>
+        </div>
+        <input type="range" id="rb_g_slider" min="0" max="832" step="10" value="0"
+               oninput="syncResetInput();calcTab5();" style="width:100%;margin-top:8px;">
       </div>
-      <div class="form-group">
-        <label>高確状態 実効天井G <span style="color:#666;font-size:0.7rem;">(短縮後の天井)</span></label>
-        <input type="number" id="rb_highceil" value="400" min="0" max="9999" oninput="calcTab5()">
-      </div>
-      <div class="form-group">
-        <label>固定ボーナスメダル (枚) <span style="color:#666;font-size:0.7rem;">(即時獲得)</span></label>
-        <input type="number" id="rb_bonus" value="0" min="0" oninput="calcTab5()">
-      </div>
+
+      <!-- 現在G数からの期待値 -->
+      <div id="rb_current_result" style="margin-top:14px;"></div>
     </div>
 
-    <!-- 状態確率バー -->
-    <div class="prob-bar-wrap">
-      <div style="font-size:0.72rem;color:#a08050;margin-top:10px;">リセット後 内部状態の確率分布</div>
-      <div class="prob-bar" id="prob_bar"></div>
-      <div id="prob_legend" style="display:flex;gap:12px;font-size:0.68rem;color:#888;margin-top:4px;flex-wrap:wrap;"></div>
-    </div>
+    <div id="rb_note" class="note orange" style="margin-bottom:12px;"></div>
 
-    <div id="rb_note" class="note orange" style="margin-top:10px;"></div>
+    <!-- 詳細（折りたたみ） -->
+    <details>
+      <summary style="cursor:pointer;color:#666;font-size:0.78rem;padding:4px 0;user-select:none;">詳細・確率分布を見る</summary>
 
-    <!-- リセット期待値結果 -->
-    <div class="rg-reset" id="s5_reset_results" style="margin-top:14px;"></div>
+      <div class="form-grid" style="margin-top:10px;">
+        <div class="form-group"><label>AT直撃確率 (%)</label>
+          <input type="number" id="rb_direct" value="0" min="0" max="100" step="0.1" oninput="calcTab5()"></div>
+        <div class="form-group"><label>高確率状態 移行確率 (%)</label>
+          <input type="number" id="rb_highprob" value="0" min="0" max="100" step="1" oninput="calcTab5()"></div>
+        <div class="form-group"><label>リセット天井G（短縮後）</label>
+          <input type="number" id="rb_highceil" value="832" min="0" max="9999" oninput="updateResetCeilDisplay();calcTab5()"></div>
+        <div class="form-group"><label>固定ボーナスメダル (枚)</label>
+          <input type="number" id="rb_bonus" value="0" min="0" oninput="calcTab5()"></div>
+      </div>
 
-    <!-- 状態別内訳 -->
-    <div id="s5_reset_detail" style="margin-top:12px;"></div>
+      <div class="prob-bar-wrap" style="margin-top:12px;">
+        <div style="font-size:0.72rem;color:#a08050;">リセット後 内部状態の確率分布</div>
+        <div class="prob-bar" id="prob_bar"></div>
+        <div id="prob_legend" style="display:flex;gap:12px;font-size:0.68rem;color:#888;margin-top:4px;flex-wrap:wrap;"></div>
+      </div>
+
+      <div class="rg-reset" id="s5_reset_results" style="margin-top:14px;"></div>
+      <div id="s5_reset_detail" style="margin-top:12px;"></div>
+    </details>
 
     <!-- 比較グラフ -->
     <div class="chart-wrap" style="height:220px;margin-top:14px;"><canvas id="s5_reset_chart"></canvas></div>
@@ -344,13 +414,13 @@ const SMARLO_MACHINES = [
     id: 'sm_hokuto', name: 'スマスロ北斗の拳',
     category: 'smarlo', bet: 3,
     rtp: [0, 97.0, 99.1, 101.1, 103.3, 106.2, 109.8],
-    ceiling: 1280, atMedals: 1500, costPerGame: 20,
+    ceiling: 1300, atMedals: 834, g50: 34.7,
     resetBenefit: {
       atDirectHitProb: 0,
-      highStateProb: 0,
-      highStateCeiling: 400,
+      highStateProb: 100,
+      highStateCeiling: 832,
       bonusMedals: 0,
-      note: '有利区間・ゲーム数がリセットされ0Gから再スタート。公式発表の特殊リセット恩恵は現在未確認。朝イチは純粋な天井1280G狙いが基本戦略。',
+      note: '天井到達時の平均獲得枚数834枚（実戦2億G以上のデータ、出典: だくお note）。天井AT時は継続率UP特典あり。リセット後天井は800G+前兆（約832G）。50枚あたり34.7G。',
     },
     zones: [
       {start:0,   end:200,  label:'序盤',   color:'#22224a'},
@@ -365,23 +435,26 @@ const SMARLO_MACHINES = [
   {
     id: 'sm_ghoul', name: 'スマスロ東京喰種re',
     category: 'smarlo', bet: 3,
-    rtp: [0, 97.8, 99.4, 101.2, 103.5, 106.0, 107.8],
-    ceiling: 1500, atMedals: 700, costPerGame: 25,
+    rtp: [0, 97.5, 99.0, 101.6, 105.6, 110.3, 114.9],
+    ceiling: 1200, atMedals: 415, g50: 31.1,
+    displayRatio: 1.5,   // 液晶G数 = 実G数 × 1.5（ユーザーが見る表示）
+    czCeiling: 600,      // CZ間天井（実G数）
+    czAtProb: 0.65,      // CZ突破後のAT当選確率（平均）
     resetBenefit: {
       atDirectHitProb: 0,
-      highStateProb: 35,
-      highStateCeiling: 350,
+      highStateProb: 100,
+      highStateCeiling: 200,
       bonusMedals: 0,
-      note: '設定変更後「カグネ高確」状態への移行確率が上昇する情報あり（推定35%）。高確中は通常よりATに当選しやすく、実効天井が大幅に短縮。朝イチは狙い目とされる台。※確率は推定値',
+      note: 'リセット後はCZ間天井が600G→200Gに短縮（全台100%移行）。200G以内にCZ当選、そこからAT確率62〜75%。AT平均415枚・50枚あたり31.1G（出典: flick7・slopachi-quest）',
     },
     zones: [
-      {start:0,   end:300,  label:'序盤', color:'#22224a'},
-      {start:300, end:600,  label:'中間', color:'#2a2a3a'},
-      {start:600, end:900,  label:'後半', color:'#4a3010'},
-      {start:900, end:1200, label:'手前', color:'#3a2010'},
-      {start:1200,end:1500, label:'天井圏', color:'#5a2000'},
+      {start:0,   end:200,  label:'リセット天井圏', color:'#1a3a1a'},
+      {start:200, end:400,  label:'序盤',           color:'#22224a'},
+      {start:400, end:600,  label:'CZ天井圏',       color:'#4a3010'},
+      {start:600, end:900,  label:'中盤',            color:'#2a2a3a'},
+      {start:900, end:1200, label:'AT天井圏',        color:'#5a2000'},
     ],
-    notes: '設定1:97.8% / 設定6:107.8% / 天井:1500G'
+    notes: '設定1:97.5% / 設定6:114.9% / CZ天井:600実G(900液晶G) / AT天井:1200実G(1800液晶G)'
   },
   {
     id: 'sm_geass', name: 'スマスロ コードギアスR2',
@@ -563,15 +636,40 @@ function onMachineChange(p){
 // Tab5: スマスロ天井・リセット期待値
 // ═══════════════════════════════════════════════════════════════
 let chart5=null, chartReset=null;
+let currentDisplayRatio = 1;   // 液晶G数 ÷ 実G数（通常機種は1）
+let currentCzCeiling    = 0;   // CZ間天井（実G数）、0=なし
+let currentCzAtProb     = 0;   // CZ突破後AT当選確率
 
 function onSmarloMachineChange(){
   const id=document.getElementById('s5_machine').value;
   const m=getSmarloMachine(id);
   if(!m)return;
+
+  // 液晶/CZ パラメータ保存
+  currentDisplayRatio = m.displayRatio || 1;
+  currentCzCeiling    = m.czCeiling    || 0;
+  currentCzAtProb     = m.czAtProb     || 0;
+
   document.getElementById('s5_ceiling').value  = m.ceiling    || 1500;
   document.getElementById('s5_atmedals').value = m.atMedals   || 1000;
-  document.getElementById('s5_cost').value     = m.costPerGame|| 20;
-  document.getElementById('s5_slider').max     = m.ceiling    || 1500;
+  document.getElementById('s5_bet').value      = m.bet        || 3;
+
+  // スライダー最大値：液晶G数機種は displayRatio 倍
+  const sliderMax = Math.round((m.ceiling || 1500) * currentDisplayRatio);
+  document.getElementById('s5_slider').max = sliderMax;
+  document.getElementById('s5_current').max = sliderMax * 2;
+
+  // 入力ラベル切り替え
+  document.getElementById('s5_g_label').textContent =
+    currentDisplayRatio > 1 ? '現在の液晶G数（台の液晶表示）' : '現在のゲーム数';
+
+  if(m.g50){
+    document.getElementById('s5_gper1k').value = m.g50;
+  } else {
+    const price = parseInt(document.getElementById('s5_price').value) || 20;
+    document.getElementById('s5_gper1k').value = ((50 * price) / ((m.bet||3) * price)).toFixed(1);
+  }
+  autoCalcCost();
 
   // リセット恩恵 pre-fill
   const rb = m.resetBenefit || {};
@@ -600,10 +698,81 @@ function renderMachineInfoCard(m){
   </div>`;
 }
 
+function setMode(mode){
+  const isReset = mode === 'reset';
+  document.getElementById('gcount_input_area').style.display  = isReset ? 'none' : 'block';
+  document.getElementById('section_normal_ev').style.display  = isReset ? 'none' : 'block';
+  document.getElementById('section_reset').style.display      = isReset ? 'block' : 'none';
+
+  document.getElementById('btn_mode_reset').classList.toggle('active', isReset);
+  document.getElementById('btn_mode_current').classList.toggle('active', !isReset);
+
+  if(isReset){
+    document.getElementById('s5_current').value = 0;
+    document.getElementById('s5_slider').value  = 0;
+  }
+  calcTab5();
+}
+
+function autoCalcCost(){
+  const g50   = parseFloat(document.getElementById('s5_gper1k').value) || 34.7;
+  const price = parseInt(document.getElementById('s5_price').value)    || 20;
+  const cost  = (50 * price) / g50;
+  document.getElementById('s5_cost').value = cost.toFixed(1);
+  calcTab5();
+}
+function onG50Change(){
+  autoCalcCost();
+}
+
+function syncResetSlider(){
+  const v = parseInt(document.getElementById('rb_current_g').value) || 0;
+  document.getElementById('rb_g_slider').value = v;
+}
+function syncResetInput(){
+  const v = parseInt(document.getElementById('rb_g_slider').value) || 0;
+  document.getElementById('rb_current_g').value = v;
+}
+function updateResetCeilDisplay(){
+  const ceil = parseInt(document.getElementById('rb_highceil').value) || 832;
+  document.getElementById('rb_ceil_display').textContent = ceil + 'G';
+  document.getElementById('rb_g_slider').max = ceil;
+  document.getElementById('rb_current_g').max = ceil;
+}
+
+function renderResetCurrentEV(atMedals, price, resetCeil, costPerGame, rbCurG){
+  const remainG   = Math.max(0, resetCeil - rbCurG);
+  const currentEV = Math.round(atMedals * price - remainG * costPerGame);
+  const breakEven = Math.max(0, Math.round(resetCeil - (atMedals * price) / costPerGame));
+  const c = v => v >= 0 ? 'pos' : 'neg';
+
+  let badge = '';
+  if(currentEV >= 0){
+    badge = `<span class="badge badge-green">打ち時 ― ${rbCurG}G は損益分岐(${breakEven}G)超え</span>`;
+  } else if(rbCurG >= breakEven - 50){
+    badge = `<span class="badge badge-orange">もうすぐ打ち時 ― あと${breakEven - rbCurG}Gで損益分岐</span>`;
+  } else {
+    badge = `<span class="badge badge-red">様子見 ― 損益分岐は ${breakEven}G〜</span>`;
+  }
+
+  document.getElementById('rb_current_result').innerHTML = `
+    <div class="rg" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr));margin-bottom:10px;">
+      <div class="rb"><div class="lbl">現在の期待値</div><div class="val ${c(currentEV)}">${fmt(currentEV)}円</div></div>
+      <div class="rb"><div class="lbl">天井まで残り</div><div class="val neu">${remainG}G</div></div>
+      <div class="rb"><div class="lbl">損益分岐</div><div class="val org">${breakEven}G〜</div></div>
+      <div class="rb"><div class="lbl">残り投資額(最大)</div><div class="val neu">${Math.round(remainG*costPerGame).toLocaleString()}円</div></div>
+    </div>
+    ${badge}`;
+}
+
 function setG(g){
   document.getElementById('s5_current').value=g;
   document.getElementById('s5_slider').value=g;
   calcTab5();
+}
+function setGCeiling(){
+  const ceiling = parseInt(document.getElementById('s5_ceiling').value) || 1300;
+  setG(Math.round(ceiling * currentDisplayRatio));
 }
 function syncSlider(){ document.getElementById('s5_slider').value=parseInt(document.getElementById('s5_current').value)||0; }
 function syncInput(){ document.getElementById('s5_current').value=parseInt(document.getElementById('s5_slider').value)||0; }
@@ -632,16 +801,33 @@ function calcTab5(){
   const atMedals = parseInt(document.getElementById('s5_atmedals').value) || 1500;
   const cost     = parseFloat(document.getElementById('s5_cost').value)   || 20;
   const price    = parseInt(document.getElementById('s5_price').value)    || 20;
-  const curG     = Math.min(parseInt(document.getElementById('s5_current').value)||0, ceiling);
+
+  // 液晶G数 → 実G数 変換
+  const inputG = parseInt(document.getElementById('s5_current').value) || 0;
+  const curG   = Math.min(
+    currentDisplayRatio > 1 ? Math.round(inputG / currentDisplayRatio) : inputG,
+    ceiling
+  );
+
+  // 変換表示
+  const convertEl = document.getElementById('s5_g_convert');
+  if(currentDisplayRatio > 1 && convertEl){
+    convertEl.style.display = 'block';
+    convertEl.innerHTML = `📺 液晶表示 <strong>${inputG}G</strong> → 実G数（内部）約 <strong>${curG}G</strong>（÷${currentDisplayRatio}）`;
+  } else if(convertEl){
+    convertEl.style.display = 'none';
+  }
 
   const pDirect  = parseFloat(document.getElementById('rb_direct').value)   || 0;
   const pHigh    = parseFloat(document.getElementById('rb_highprob').value)  || 0;
   const highCeil = parseInt(document.getElementById('rb_highceil').value)   || 400;
   const bonusMed = parseInt(document.getElementById('rb_bonus').value)      || 0;
 
-  document.getElementById('s5_slider').max = ceiling;
-  if(parseInt(document.getElementById('s5_slider').value)>ceiling)
-    document.getElementById('s5_slider').value=ceiling;
+  // スライダー max：液晶G数機種は displayRatio 倍の値に合わせる
+  const sliderMaxVal = Math.round(ceiling * currentDisplayRatio);
+  document.getElementById('s5_slider').max = sliderMaxVal;
+  if(parseInt(document.getElementById('s5_slider').value) > sliderMaxVal)
+    document.getElementById('s5_slider').value = sliderMaxVal;
 
   const atReturn    = atMedals * price;
   const remainG     = ceiling - curG;
@@ -662,16 +848,58 @@ function calcTab5(){
     <div class="rb"><div class="lbl">期待値+転換G数</div><div class="val ${alwaysPos?'pos':neverPos?'neg':'org'}">
       ${alwaysPos?'常にプラス':neverPos?'転換なし':breakEvenG+'G〜'}</div></div>`;
 
-  // バッジ
+  // バッジ（液晶G数機種は液晶換算も表示）
   const bel=document.getElementById('s5_badge');
+  const liq = g => currentDisplayRatio > 1 ? `（液晶 ${Math.round(g*currentDisplayRatio)}G）` : '';
   if(alwaysPos) bel.innerHTML=`<span class="badge badge-green">0Gから常にプラス — リセット台も基本プラス期待値</span>`;
   else if(neverPos) bel.innerHTML=`<span class="badge badge-red">保守的計算ではプラス転換なし</span>`;
   else {
     const ok=curG>=breakEvenG;
     bel.innerHTML=`<span class="badge ${ok?'badge-green':'badge-orange'}">
-      ${ok?`現在${curG}G ≥ 狙い目${breakEvenG}G → 打ち時`:`狙い目: ${breakEvenG}G〜 (あと${breakEvenG-curG}G)`}
+      ${ok?`現在${curG}実G${liq(curG)} ≥ 狙い目${breakEvenG}実G${liq(breakEvenG)} → 打ち時`
+          :`狙い目: ${breakEvenG}実G${liq(breakEvenG)}〜 (あと${breakEvenG-curG}実G)`}
     </span>`;
   }
+
+  // ─── CZ間天井狙い（二段階天井機種のみ） ───
+  const czSec = document.getElementById('s5_cz_section');
+  if(currentCzCeiling > 0 && curG < currentCzCeiling){
+    czSec.style.display = 'block';
+    const czReturn   = currentCzAtProb * atMedals * price;  // CZ突破→AT期待リターン
+    const czRemainG  = currentCzCeiling - curG;
+    const czEV       = Math.round(czReturn - czRemainG * cost);
+    const czBreak    = Math.max(0, Math.round(currentCzCeiling - czReturn / cost));
+    const czBreakLiq = Math.round(czBreak * currentDisplayRatio);
+    const czCeilLiq  = Math.round(currentCzCeiling * currentDisplayRatio);
+
+    document.getElementById('s5_cz_ceil_label').textContent =
+      `${currentCzCeiling}実G（液晶 ${czCeilLiq}G）`;
+    document.getElementById('s5_cz_atprob_label').textContent =
+      Math.round(currentCzAtProb * 100);
+
+    document.getElementById('s5_cz_results').innerHTML = `
+      <div class="rb"><div class="lbl">CZ狙い期待値</div><div class="val ${czEV>=0?'pos':'neg'}">${fmt(czEV)}円</div></div>
+      <div class="rb"><div class="lbl">CZ天井まで残り</div><div class="val neu">${czRemainG}実G<br><span style="font-size:0.72rem;color:#888;">（液晶 約${Math.round(czRemainG*currentDisplayRatio)}G）</span></div></div>
+      <div class="rb"><div class="lbl">損益分岐<br>（実G / 液晶G）</div><div class="val org">${czBreak}G / ${czBreakLiq}G〜</div></div>
+      <div class="rb"><div class="lbl">CZ→AT期待リターン</div><div class="val org">${fmtN(Math.round(czReturn))}円</div></div>`;
+
+    const czBadgeEl = document.getElementById('s5_cz_badge');
+    if(czEV >= 0){
+      czBadgeEl.innerHTML = `<span class="badge badge-green">CZ狙い打ち時 ― 液晶${Math.round(curG*currentDisplayRatio)}G ≥ 損益分岐 液晶${czBreakLiq}G</span>`;
+    } else if(curG >= czBreak - Math.round(50/currentDisplayRatio)){
+      czBadgeEl.innerHTML = `<span class="badge badge-orange">もうすぐCZ打ち時 ― あと 液晶${czBreakLiq - Math.round(curG*currentDisplayRatio)}G で損益分岐</span>`;
+    } else {
+      czBadgeEl.innerHTML = `<span class="badge badge-red">CZ狙い様子見 ― 損益分岐は 液晶${czBreakLiq}G〜</span>`;
+    }
+  } else {
+    if(czSec) czSec.style.display = 'none';
+  }
+
+  // AT間天井のタイトルをCZ機種では明示
+  document.getElementById('s5_ev_title').textContent =
+    currentCzCeiling > 0
+      ? `AT間天井狙い（${ceiling}実G / 液晶${Math.round(ceiling*currentDisplayRatio)}G）`
+      : '天井到達期待値（現在G数基準）';
 
   // ゾーンバー
   renderZoneBar(ceiling, curG);
@@ -772,6 +1000,23 @@ function calcTab5(){
       }
     }
   });
+
+  // リセット現在G期待値
+  const rbCurG   = parseInt(document.getElementById('rb_current_g').value) || 0;
+  const resetCeil = pHigh > 0 ? highCeil : ceiling;
+  renderResetCurrentEV(atMedals, price, resetCeil, cost, rbCurG);
+
+  // リセット天井・AT枚数の表示更新
+  const ceilDisp = document.getElementById('rb_ceil_display');
+  if(ceilDisp) ceilDisp.textContent = resetCeil + 'G';
+  const atDisp = document.getElementById('rb_atmedals_display');
+  if(atDisp) atDisp.textContent = atMedals + '枚';
+  const retDisp = document.getElementById('rb_return_display');
+  if(retDisp) retDisp.textContent = Math.round(atMedals * price).toLocaleString();
+  const slider = document.getElementById('rb_g_slider');
+  if(slider) { slider.max = resetCeil; }
+  const ginput = document.getElementById('rb_current_g');
+  if(ginput) ginput.max = resetCeil;
 
   // 自動判断
   renderJudgment(conservEV, R, curG, ceiling, breakEvenG, cost, atMedals, price, pHigh, highCeil);
@@ -1086,6 +1331,7 @@ function switchTab(id,btn){
 populateMachineSelects();
 document.getElementById('s5_machine').value='sm_hokuto';
 onSmarloMachineChange();
+setMode('reset');
 document.getElementById('t1_machine').value='sm_hokuto';
 onMachineChange('t1');
 document.getElementById('t2_machine').value='sm_hokuto';
