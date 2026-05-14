@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>スマスロ期待値計算ツール</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+  header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 16px 20px; border-bottom: 2px solid #e2934a; }
+  header h1 { font-size: 1.4rem; color: #e2934a; letter-spacing: 1px; }
+  header p  { font-size: 0.75rem; color: #888; margin-top: 2px; }
+
+  .tabs { display: flex; background: #12121f; border-bottom: 1px solid #2a2a40; overflow-x: auto; }
+  .tab-btn { padding: 12px 18px; border: none; background: none; color: #888; cursor: pointer; font-size: 0.82rem; white-space: nowrap; border-bottom: 3px solid transparent; transition: all 0.2s; }
+  .tab-btn:hover { color: #ccc; background: #1a1a2e; }
+  .tab-btn.active { color: #e2934a; border-bottom-color: #e2934a; background: #1a1a2e; }
+
+  .tab-content { display: none; padding: 20px; max-width: 960px; margin: 0 auto; }
+  .tab-content.active { display: block; }
+
+  .card { background: #1a1a2e; border-radius: 10px; padding: 20px; margin-bottom: 16px; border: 1px solid #2a2a40; }
+  .card h2 { font-size: 0.95rem; color: #e2934a; margin-bottom: 14px; border-bottom: 1px solid #2a2a40; padding-bottom: 8px; }
+  .card.blue h2 { color: #4a90e2; }
+
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: 12px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  label { font-size: 0.76rem; color: #aaa; }
+  input, select { background: #0f0f1a; border: 1px solid #3a3a55; border-radius: 6px; color: #e0e0e0; padding: 8px 10px; font-size: 0.88rem; width: 100%; }
+  input:focus, select:focus { outline: none; border-color: #e2934a; }
+  input[type=range] { padding: 4px 0; background: none; border: none; cursor: pointer; }
+  input.hl { border-color: #e2934a44; background: #1a150f; }
+
+  .btn { padding: 9px 22px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.88rem; font-weight: bold; transition: all 0.2s; }
+  .btn-orange { background: #e2934a; color: #0f0f1a; }
+  .btn-orange:hover { background: #d4803a; }
+  .btn-primary { background: #4a90e2; color: white; }
+  .btn-primary:hover { background: #357abd; }
+  .btn-danger  { background: #e24a4a; color: white; }
+  .btn-danger:hover { background: #bd3535; }
+  .btn-secondary { background: #2a2a40; color: #ccc; border: 1px solid #3a3a55; }
+  .btn-secondary:hover { background: #3a3a55; }
+  .btn-sm { padding: 5px 12px; font-size: 0.78rem; }
+
+  .rg { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 10px; margin-top: 14px; }
+  .rb { background: #0f0f1a; border-radius: 8px; padding: 12px; border: 1px solid #2a2a40; text-align: center; }
+  .rb .lbl { font-size: 0.68rem; color: #888; margin-bottom: 5px; line-height: 1.4; }
+  .rb .val { font-size: 1.15rem; font-weight: bold; }
+  .pos { color: #4ae24a; } .neg { color: #e24a4a; }
+  .neu { color: #e0e0e0; } .org { color: #e2934a; }
+
+  .chart-wrap { position: relative; height: 260px; margin-top: 14px; }
+
+  /* リセット恩恵カード */
+  .reset-card { background: #140f00; border: 1px solid #4a3510; border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+  .reset-card h2 { color: #e2c04a; font-size: 0.95rem; margin-bottom: 14px; border-bottom: 1px solid #3a2a10; padding-bottom: 8px; }
+  .reset-card input:focus { border-color: #e2c04a; }
+  .reset-card label { color: #c8a870; }
+  .benefit-state { background: #0f0b00; border: 1px solid #3a2a10; border-radius: 8px; padding: 12px; margin-top: 10px; }
+  .benefit-state h3 { font-size: 0.8rem; color: #e2c04a; margin-bottom: 8px; }
+
+  .rg-reset { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 10px; margin-top: 14px; }
+  .rb-reset { background: #0f0b00; border-radius: 8px; padding: 12px; border: 1px solid #3a2a10; text-align: center; }
+  .rb-reset .lbl { font-size: 0.68rem; color: #a08050; margin-bottom: 5px; line-height: 1.4; }
+  .rb-reset .val { font-size: 1.15rem; font-weight: bold; }
+
+  .prob-bar-wrap { margin-top: 10px; }
+  .prob-bar { height: 24px; background: #0f0b00; border-radius: 6px; border: 1px solid #3a2a10; display: flex; overflow: hidden; margin-top: 4px; }
+  .prob-seg { display: flex; align-items: center; justify-content: center; font-size: 0.66rem; color: #fff; overflow: hidden; transition: width 0.3s; }
+
+  .machine-info-card { background: #0f0f1a; border: 1px solid #3a3a55; border-radius: 8px; padding: 14px; margin-top: 12px; }
+  .machine-info-card h3 { font-size: 0.82rem; color: #e2934a; margin-bottom: 8px; }
+  .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+  .info-chip { background: #1a1a2e; border-radius: 6px; padding: 8px 10px; border: 1px solid #2a2a40; font-size: 0.78rem; }
+  .info-chip .l { color: #666; font-size: 0.68rem; margin-bottom: 2px; }
+  .info-chip .v { color: #e0e0e0; font-weight: bold; }
+
+  .zone-bar { height: 20px; background: #0f0f1a; border-radius: 4px; margin-top: 6px; position: relative; overflow: hidden; border: 1px solid #2a2a40; }
+  .zone-seg { position: absolute; top:0; height:100%; display:flex; align-items:center; justify-content:center; font-size:0.62rem; color:#fff; overflow:hidden; }
+
+  .badge { display: inline-block; border-radius: 20px; padding: 4px 14px; font-size: 0.78rem; margin-top: 8px; border: 1px solid; }
+  .badge-green { background: #0a1a0a; border-color: #4ae24a55; color: #4ae24a; }
+  .badge-orange { background: #1a100a; border-color: #e2934a55; color: #e2934a; }
+  .badge-red { background: #1a0a0a; border-color: #e24a4a55; color: #e24a4a; }
+
+  .note { background: #0a1a0a; border: 1px solid #2a402a; border-radius: 6px; padding: 10px 14px; color: #88cc88; font-size: 0.74rem; margin-top: 12px; line-height: 1.6; }
+  .note.warn { background: #1a130a; border-color: #40380a; color: #cca040; }
+  .note.orange { background: #140f00; border-color: #4a3510; color: #c8a870; }
+
+  /* 自動判断カード */
+  .judge-card { border-radius: 10px; padding: 20px; margin-bottom: 16px; border: 2px solid; }
+  .judge-card.good   { background: #0a1a0a; border-color: #4ae24a66; }
+  .judge-card.caution{ background: #1a120a; border-color: #e2934a66; }
+  .judge-card.bad    { background: #1a0a0a; border-color: #e24a4a66; }
+  .judge-verdict { font-size: 1.5rem; font-weight: bold; margin-bottom: 4px; }
+  .judge-verdict.good    { color: #4ae24a; }
+  .judge-verdict.caution { color: #e2934a; }
+  .judge-verdict.bad     { color: #e24a4a; }
+  .judge-sub { font-size: 0.8rem; color: #888; margin-bottom: 14px; }
+  .judge-section { margin-top: 12px; }
+  .judge-section h4 { font-size: 0.78rem; color: #aaa; margin-bottom: 6px; letter-spacing: 0.5px; text-transform: uppercase; }
+  .judge-reasons { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 5px; }
+  .judge-reasons li { font-size: 0.82rem; padding: 6px 10px; border-radius: 6px; background: #ffffff08; border-left: 3px solid #4ae24a44; color: #d0d0d0; line-height: 1.5; }
+  .judge-reasons li.warn { border-left-color: #e2934a66; }
+  .judge-reasons li.danger { border-left-color: #e24a4a66; }
+  .stoploss-box { background: #1a1a2e; border: 1px solid #2a2a55; border-radius: 8px; padding: 10px 14px; margin-top: 6px; font-size: 0.84rem; color: #e0e0e0; }
+  .stoploss-box strong { color: #e24a4a; }
+
+  .machine-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+  .machine-item { display: flex; justify-content: space-between; align-items: center; background: #0f0f1a; border-radius: 6px; padding: 10px 14px; border: 1px solid #2a2a40; font-size: 0.82rem; }
+  .machine-item small { color: #888; }
+
+  .compare-slot { background: #0f0f1a; border-radius: 8px; padding: 14px; border: 1px solid #2a2a40; margin-bottom: 10px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 0.82rem; }
+  th { background: #0f0f1a; color: #e2934a; padding: 8px 10px; border: 1px solid #2a2a40; }
+  td { padding: 8px 10px; text-align: center; border: 1px solid #2a2a40; }
+  tr:nth-child(even) td { background: #0f0f1a; }
+
+  optgroup { background: #0f0f1a; } option { background: #0f0f1a; }
+  @media(max-width:520px){ .tab-btn{padding:10px 12px;font-size:0.76rem;} header h1{font-size:1.1rem;} }
+</style>
+</head>
+<body>
+<header>
+  <h1>スマスロ 期待値計算ツール</h1>
+  <p>天井・リセット恩恵・設定別 損益を即時計算</p>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('tab5',this)">天井・リセット期待値</button>
+  <button class="tab-btn" onclick="switchTab('tab1',this)">損益シミュレーション</button>
+  <button class="tab-btn" onclick="switchTab('tab2',this)">現在収支 → 今後の期待値</button>
+  <button class="tab-btn" onclick="switchTab('tab3',this)">複数台比較</button>
+  <button class="tab-btn" onclick="switchTab('tab4',this)">機種管理</button>
+</div>
+
+<!-- ===== Tab5: メイン ===== -->
+<div id="tab5" class="tab-content active">
+
+  <!-- 機種・基本設定 -->
+  <div class="card">
+    <h2>機種・基本設定</h2>
+    <div class="form-grid">
+      <div class="form-group"><label>機種選択</label>
+        <select id="s5_machine" onchange="onSmarloMachineChange()"></select></div>
+      <div class="form-group"><label>天井ゲーム数</label>
+        <input type="number" id="s5_ceiling"  class="hl" value="1280" min="100" max="3000" oninput="calcTab5()"></div>
+      <div class="form-group"><label>AT純増枚数 (枚)</label>
+        <input type="number" id="s5_atmedals" class="hl" value="1500" min="100" max="10000" oninput="calcTab5()"></div>
+      <div class="form-group"><label>通常時 実質コスト (円/G)</label>
+        <input type="number" id="s5_cost"     class="hl" value="20"   min="1"   max="200"   oninput="calcTab5()"></div>
+      <div class="form-group"><label>メダル単価 (円)</label>
+        <input type="number" id="s5_price"            value="20"   min="1"   max="50"    oninput="calcTab5()"></div>
+    </div>
+    <div id="s5_machine_info"></div>
+  </div>
+
+  <!-- 現在ゲーム数 -->
+  <div class="card">
+    <h2>現在のゲーム数</h2>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <input type="number" id="s5_current" value="0" min="0" max="9999"
+             style="width:110px;" oninput="syncSlider();calcTab5();">
+      <span style="color:#666;font-size:0.78rem;">G</span>
+      <button class="btn btn-sm btn-secondary" onclick="setG(0)">リセット(0G)</button>
+      <button class="btn btn-sm btn-secondary" onclick="setG(parseInt(document.getElementById('s5_ceiling').value||1280))">天井</button>
+    </div>
+    <div style="margin-top:10px;">
+      <input type="range" id="s5_slider" min="0" max="1280" step="10" value="0"
+             oninput="syncInput();calcTab5();" style="width:100%;">
+    </div>
+    <div id="s5_zone_bar"></div>
+  </div>
+
+  <!-- 通常期待値結果 -->
+  <div class="card">
+    <h2>天井到達期待値（現在G数基準）</h2>
+    <div class="rg" id="s5_results"></div>
+    <div id="s5_badge" style="margin-top:10px;"></div>
+    <div class="chart-wrap"><canvas id="s5_chart"></canvas></div>
+    <div class="note warn">
+      ※ 「保守的期待値」= 天井で必ずAT当選と仮定した値。実際は天井前にAT当選する分、期待値は高くなります。<br>
+      ※ グラフの△マークが現在地。数値は各自の機種データに合わせて調整してください。
+    </div>
+  </div>
+
+  <!-- リセット恩恵 -->
+  <div class="reset-card">
+    <h2>リセット恩恵（設定変更・朝イチ）</h2>
+
+    <div class="form-grid">
+      <div class="form-group">
+        <label>AT直撃確率 (%)</label>
+        <input type="number" id="rb_direct" value="0" min="0" max="100" step="0.1" oninput="calcTab5()">
+      </div>
+      <div class="form-group">
+        <label>高確率状態 移行確率 (%)</label>
+        <input type="number" id="rb_highprob" value="0" min="0" max="100" step="1" oninput="calcTab5()">
+      </div>
+      <div class="form-group">
+        <label>高確状態 実効天井G <span style="color:#666;font-size:0.7rem;">(短縮後の天井)</span></label>
+        <input type="number" id="rb_highceil" value="400" min="0" max="9999" oninput="calcTab5()">
+      </div>
+      <div class="form-group">
+        <label>固定ボーナスメダル (枚) <span style="color:#666;font-size:0.7rem;">(即時獲得)</span></label>
+        <input type="number" id="rb_bonus" value="0" min="0" oninput="calcTab5()">
+      </div>
+    </div>
+
+    <!-- 状態確率バー -->
+    <div class="prob-bar-wrap">
+      <div style="font-size:0.72rem;color:#a08050;margin-top:10px;">リセット後 内部状態の確率分布</div>
+      <div class="prob-bar" id="prob_bar"></div>
+      <div id="prob_legend" style="display:flex;gap:12px;font-size:0.68rem;color:#888;margin-top:4px;flex-wrap:wrap;"></div>
+    </div>
+
+    <div id="rb_note" class="note orange" style="margin-top:10px;"></div>
+
+    <!-- リセット期待値結果 -->
+    <div class="rg-reset" id="s5_reset_results" style="margin-top:14px;"></div>
+
+    <!-- 状態別内訳 -->
+    <div id="s5_reset_detail" style="margin-top:12px;"></div>
+
+    <!-- 比較グラフ -->
+    <div class="chart-wrap" style="height:220px;margin-top:14px;"><canvas id="s5_reset_chart"></canvas></div>
+  </div>
+
+  <!-- 自動判断アドバイス -->
+  <div id="s5_judgment"></div>
+
+</div>
+
+<!-- ===== Tab1 ===== -->
+<div id="tab1" class="tab-content">
+  <div class="card blue">
+    <h2>基本設定</h2>
+    <div class="form-grid">
+      <div class="form-group"><label>機種選択</label><select id="t1_machine" onchange="onMachineChange('t1')"></select></div>
+      <div class="form-group"><label>設定</label>
+        <select id="t1_setting">
+          <option value="1">設定1</option><option value="2">設定2</option><option value="3">設定3</option>
+          <option value="4">設定4</option><option value="5">設定5</option><option value="6" selected>設定6</option>
+        </select></div>
+      <div class="form-group"><label>機械割 (%)</label><input type="number" id="t1_rtp" value="103.8" step="0.1"></div>
+      <div class="form-group"><label>ベット枚数</label><input type="number" id="t1_bet" value="3" min="1"></div>
+      <div class="form-group"><label>メダル単価 (円)</label><input type="number" id="t1_price" value="20" min="1"></div>
+      <div class="form-group"><label>ゲーム数/時</label><input type="number" id="t1_gph" value="450" min="100"></div>
+    </div>
+    <div class="form-group" style="margin-top:14px;">
+      <label>シミュレーションG数: <strong id="t1_gl">1000G</strong></label>
+      <input type="range" id="t1_games" min="100" max="5000" step="100" value="1000"
+             oninput="document.getElementById('t1_gl').textContent=this.value+'G';calcTab1();">
+    </div>
+  </div>
+  <div class="card blue">
+    <h2>計算結果</h2>
+    <div class="rg" id="t1_results"></div>
+    <div class="chart-wrap"><canvas id="t1_chart"></canvas></div>
+    <div class="note">※ 期待値は長期的な平均です。短期では大きくブレます。</div>
+  </div>
+</div>
+
+<!-- ===== Tab2 ===== -->
+<div id="tab2" class="tab-content">
+  <div class="card blue">
+    <h2>現在の実戦データ</h2>
+    <div class="form-grid">
+      <div class="form-group"><label>機種選択</label><select id="t2_machine" onchange="onMachineChange('t2')"></select></div>
+      <div class="form-group"><label>想定設定</label>
+        <select id="t2_setting">
+          <option value="1">設定1</option><option value="2">設定2</option><option value="3">設定3</option>
+          <option value="4">設定4</option><option value="5">設定5</option><option value="6" selected>設定6</option>
+        </select></div>
+      <div class="form-group"><label>機械割 (%)</label><input type="number" id="t2_rtp" value="103.8" step="0.1"></div>
+      <div class="form-group"><label>ベット枚数</label><input type="number" id="t2_bet" value="3" min="1"></div>
+      <div class="form-group"><label>メダル単価 (円)</label><input type="number" id="t2_price" value="20" min="1"></div>
+      <div class="form-group"><label>消化G数</label><input type="number" id="t2_played" value="1000" min="0"></div>
+      <div class="form-group"><label>投資額 (円)</label><input type="number" id="t2_invest" value="15000" min="0"></div>
+      <div class="form-group"><label>手持ちメダル (枚)</label><input type="number" id="t2_medals" value="1000" min="0"></div>
+    </div>
+    <div class="form-group" style="margin-top:14px;">
+      <label>今後追加G数: <strong id="t2_fl">1000G</strong></label>
+      <input type="range" id="t2_future" min="0" max="5000" step="100" value="1000"
+             oninput="document.getElementById('t2_fl').textContent=this.value+'G';calcTab2();">
+    </div>
+    <div style="margin-top:12px;"><button class="btn btn-primary" onclick="calcTab2()">計算する</button></div>
+  </div>
+  <div class="card blue">
+    <h2>収支分析</h2>
+    <div class="rg" id="t2_results"></div>
+    <div class="chart-wrap"><canvas id="t2_chart"></canvas></div>
+    <div class="note">※ グラフの縦線が現在地。右側が今後の期待値推移です。</div>
+  </div>
+</div>
+
+<!-- ===== Tab3 ===== -->
+<div id="tab3" class="tab-content">
+  <div class="card blue"><h2>比較設定（最大4台）</h2>
+    <div id="compare_slots"></div>
+    <button class="btn btn-primary" onclick="calcTab3()" style="margin-top:12px;">比較計算</button>
+  </div>
+  <div class="card blue"><h2>比較結果</h2>
+    <div id="t3_table"></div>
+    <div class="chart-wrap"><canvas id="t3_chart"></canvas></div>
+  </div>
+</div>
+
+<!-- ===== Tab4 ===== -->
+<div id="tab4" class="tab-content">
+  <div class="card blue"><h2>カスタム機種を追加</h2>
+    <div class="form-grid">
+      <div class="form-group"><label>機種名</label><input type="text" id="m_name" placeholder="例: 新台XX" maxlength="30"></div>
+      <div class="form-group"><label>ベット枚数</label><input type="number" id="m_bet" value="3" min="1"></div>
+    </div>
+    <div class="form-grid" style="margin-top:10px;">
+      <div class="form-group"><label>設定1 (%)</label><input type="number" id="m_r1" step="0.1"></div>
+      <div class="form-group"><label>設定2 (%)</label><input type="number" id="m_r2" step="0.1"></div>
+      <div class="form-group"><label>設定3 (%)</label><input type="number" id="m_r3" step="0.1"></div>
+      <div class="form-group"><label>設定4 (%)</label><input type="number" id="m_r4" step="0.1"></div>
+      <div class="form-group"><label>設定5 (%)</label><input type="number" id="m_r5" step="0.1"></div>
+      <div class="form-group"><label>設定6 (%)</label><input type="number" id="m_r6" step="0.1"></div>
+    </div>
+    <div style="margin-top:12px;"><button class="btn btn-primary" onclick="addCustomMachine()">追加・保存</button></div>
+  </div>
+  <div class="card blue"><h2>登録済み機種</h2>
+    <div class="machine-list" id="machine_list"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// 機種データ
+// resetBenefit:
+//   atDirectHitProb  : AT直撃確率(%) — リセット後ゲームを回す前にAT確定
+//   highStateProb    : 高確率状態への移行確率(%)
+//   highStateCeiling : 高確率状態時の実効天井G（通常天井より短い）
+//   bonusMedals      : リセット後に即時獲得できる固定ボーナスメダル(枚)
+//   note             : 説明文
+// ═══════════════════════════════════════════════════════════════
+const SMARLO_MACHINES = [
+  {
+    id: 'sm_hokuto', name: 'スマスロ北斗の拳',
+    category: 'smarlo', bet: 3,
+    rtp: [0, 97.0, 99.1, 101.1, 103.3, 106.2, 109.8],
+    ceiling: 1280, atMedals: 1500, costPerGame: 20,
+    resetBenefit: {
+      atDirectHitProb: 0,
+      highStateProb: 0,
+      highStateCeiling: 400,
+      bonusMedals: 0,
+      note: '有利区間・ゲーム数がリセットされ0Gから再スタート。公式発表の特殊リセット恩恵は現在未確認。朝イチは純粋な天井1280G狙いが基本戦略。',
+    },
+    zones: [
+      {start:0,   end:200,  label:'序盤',   color:'#22224a'},
+      {start:200, end:400,  label:'中間',   color:'#22304a'},
+      {start:400, end:600,  label:'中盤',   color:'#2a2a3a'},
+      {start:600, end:800,  label:'ゾーン', color:'#4a3010'},
+      {start:800, end:1000, label:'後半',   color:'#3a2a10'},
+      {start:1000,end:1280, label:'天井圏', color:'#5a2000'},
+    ],
+    notes: '設定1:97.0% / 設定6:109.8% / 天井:1280G'
+  },
+  {
+    id: 'sm_ghoul', name: 'スマスロ東京喰種re',
+    category: 'smarlo', bet: 3,
+    rtp: [0, 97.8, 99.4, 101.2, 103.5, 106.0, 107.8],
+    ceiling: 1500, atMedals: 700, costPerGame: 25,
+    resetBenefit: {
+      atDirectHitProb: 0,
+      highStateProb: 35,
+      highStateCeiling: 350,
+      bonusMedals: 0,
+      note: '設定変更後「カグネ高確」状態への移行確率が上昇する情報あり（推定35%）。高確中は通常よりATに当選しやすく、実効天井が大幅に短縮。朝イチは狙い目とされる台。※確率は推定値',
+    },
+    zones: [
+      {start:0,   end:300,  label:'序盤', color:'#22224a'},
+      {start:300, end:600,  label:'中間', color:'#2a2a3a'},
+      {start:600, end:900,  label:'後半', color:'#4a3010'},
+      {start:900, end:1200, label:'手前', color:'#3a2010'},
+      {start:1200,end:1500, label:'天井圏', color:'#5a2000'},
+    ],
+    notes: '設定1:97.8% / 設定6:107.8% / 天井:1500G'
+  },
+  {
+    id: 'sm_geass', name: 'スマスロ コードギアスR2',
+    category: 'smarlo', bet: 3,
+    rtp: [0, 97.8, 99.4, 101.2, 103.5, 106.0, 108.0],
+    ceiling: 1500, atMedals: 750, costPerGame: 20,
+    resetBenefit: {
+      atDirectHitProb: 0,
+      highStateProb: 30,
+      highStateCeiling: 400,
+      bonusMedals: 0,
+      note: '設定変更後「ギアス高確」状態への移行が通常より高い可能性（推定30%）。高確中はATへの当選が早まり、実効天井が短縮される。朝イチ狙い有力台。※確率は推定値',
+    },
+    zones: [
+      {start:0,   end:400,  label:'序盤', color:'#22224a'},
+      {start:400, end:800,  label:'中盤', color:'#2a2a3a'},
+      {start:800, end:1200, label:'後半', color:'#4a3010'},
+      {start:1200,end:1500, label:'天井圏', color:'#5a2000'},
+    ],
+    notes: '設定1:97.8% / 設定6:108.0% / 天井:1500G'
+  },
+  {
+    id: 'sm_bio2', name: 'スマスロ バイオハザードRE:2',
+    category: 'smarlo', bet: 3,
+    rtp: [0, 97.7, 98.8, 100.1, 101.7, 103.5, 106.4],
+    ceiling: 1500, atMedals: 600, costPerGame: 20,
+    resetBenefit: {
+      atDirectHitProb: 0,
+      highStateProb: 0,
+      highStateCeiling: 400,
+      bonusMedals: 0,
+      note: '有利区間リセットで0Gから再スタート。現時点で公式な特殊リセット恩恵の情報なし。通常の天井狙いが基本。情報が判明次第更新してください。',
+    },
+    zones: [
+      {start:0,   end:400,  label:'序盤', color:'#22224a'},
+      {start:400, end:800,  label:'中盤', color:'#2a2a3a'},
+      {start:800, end:1200, label:'後半', color:'#4a3010'},
+      {start:1200,end:1500, label:'天井圏', color:'#5a2000'},
+    ],
+    notes: '設定1:97.7% / 設定6:106.4% / 天井:1500G'
+  },
+  {
+    id: 'sm_baki', name: 'スマスロ 刃牙',
+    category: 'smarlo', bet: 3,
+    rtp: [0, 97.8, 99.4, 101.0, 103.0, 105.0, 108.0],
+    ceiling: 1280, atMedals: 900, costPerGame: 20,
+    resetBenefit: {
+      atDirectHitProb: 0,
+      highStateProb: 25,
+      highStateCeiling: 350,
+      bonusMedals: 0,
+      note: '設定変更後に高確率状態への移行情報あり（推定25%）。高確中は天井までのG数が短縮される可能性。詳細情報が出次第数値を調整してください。※確率は推定値',
+    },
+    zones: [
+      {start:0,   end:200,  label:'序盤', color:'#22224a'},
+      {start:200, end:500,  label:'中間', color:'#2a2a3a'},
+      {start:500, end:800,  label:'後半', color:'#4a3010'},
+      {start:800, end:1280, label:'天井圏', color:'#5a2000'},
+    ],
+    notes: '設定1:97.8% / 設定6:108.0% / 天井:1280G'
+  },
+  {
+    id: 'sm_ghost', name: 'スマスロ 攻殻機動隊SAC_2045',
+    category: 'smarlo', bet: 3,
+    rtp: [0, 97.5, 99.0, 100.5, 102.5, 105.0, 108.0],
+    ceiling: 1500, atMedals: 800, costPerGame: 22,
+    resetBenefit: {
+      atDirectHitProb: 0,
+      highStateProb: 0,
+      highStateCeiling: 400,
+      bonusMedals: 0,
+      note: '有利区間リセット。リセット恩恵の詳細情報は現在収集中。公式情報が判明次第、高確移行確率などを更新してください。',
+    },
+    zones: [
+      {start:0,   end:500,  label:'序盤', color:'#22224a'},
+      {start:500, end:1000, label:'中盤', color:'#4a3010'},
+      {start:1000,end:1500, label:'天井圏', color:'#5a2000'},
+    ],
+    notes: '設定1:97.5% / 設定6:108.0% / 天井:1500G'
+  },
+  {
+    id: 'sm_water', name: 'スマスロ ガンダム 水星の魔女',
+    category: 'smarlo', bet: 3,
+    rtp: [0, 97.5, 99.1, 100.8, 102.8, 105.2, 108.5],
+    ceiling: 1500, atMedals: 800, costPerGame: 22,
+    resetBenefit: {
+      atDirectHitProb: 0,
+      highStateProb: 0,
+      highStateCeiling: 400,
+      bonusMedals: 0,
+      note: '有利区間リセット。リセット恩恵の詳細情報は現在収集中。公式情報が判明次第、数値を更新してください。',
+    },
+    zones: [
+      {start:0,   end:500,  label:'序盤', color:'#22224a'},
+      {start:500, end:1000, label:'中盤', color:'#4a3010'},
+      {start:1000,end:1500, label:'天井圏', color:'#5a2000'},
+    ],
+    notes: '設定1:97.5% / 設定6:108.5% / 天井:1500G'
+  },
+  {
+    id: 'sm_custom', name: '--- カスタム入力 ---',
+    category: 'smarlo', bet: 3,
+    rtp: [0,0,0,0,0,0,0],
+    ceiling: 1500, atMedals: 1000, costPerGame: 20,
+    resetBenefit: { atDirectHitProb:0, highStateProb:0, highStateCeiling:400, bonusMedals:0, note:'カスタム入力: 各値を手動で設定してください。' },
+    zones: [], notes: ''
+  },
+];
+
+const PRESET_MACHINES = [
+  { id:'custom', name:'--- カスタム入力 ---', bet:3, rtp:[0,0,0,0,0,0,0] },
+  ...SMARLO_MACHINES.filter(m=>m.id!=='sm_custom').map(m=>({...m})),
+  { id:'myjug5',   name:'マイジャグラーV',    category:'jug', bet:3, rtp:[0,97.0,97.6,98.5,99.6,101.3,103.8] },
+  { id:'gogojug3', name:'ゴーゴージャグラー3', category:'jug', bet:3, rtp:[0,97.4,98.1,99.0,100.4,102.4,104.5] },
+  { id:'aimjug',   name:'アイムジャグラーEX',  category:'jug', bet:3, rtp:[0,95.8,97.8,99.0,100.4,102.1,103.6] },
+  { id:'hanajug',  name:'ハナハナホウオウ',     category:'jug', bet:3, rtp:[0,97.5,98.5,99.5,101.0,103.0,105.5] },
+];
+
+// ─── LocalStorage ───
+function getCustomMachines(){ try{return JSON.parse(localStorage.getItem('sl_machines')||'[]');}catch{return[];} }
+function saveCustomMachines(a){ localStorage.setItem('sl_machines',JSON.stringify(a)); }
+function getAllMachines(){ return [...PRESET_MACHINES,...getCustomMachines()]; }
+function getMachineById(id){ return getAllMachines().find(m=>m.id===id)||null; }
+function getSmarloMachine(id){ return [...SMARLO_MACHINES,...getCustomMachines()].find(m=>m.id===id)||null; }
+
+// ─── セレクト初期化 ───
+function populateMachineSelects(){
+  const all = getAllMachines();
+  ['t1_machine','t2_machine'].forEach(sid=>{
+    const sel=document.getElementById(sid); if(!sel)return;
+    const prev=sel.value; sel.innerHTML='';
+    const groups=[
+      {label:'カスタム',  list:all.filter(m=>m.id==='custom')},
+      {label:'スマスロ',  list:all.filter(m=>m.category==='smarlo')},
+      {label:'ジャグラー',list:all.filter(m=>m.category==='jug')},
+      {label:'カスタム登録',list:all.filter(m=>m.isCustom)},
+    ];
+    groups.forEach(({label,list})=>{
+      if(!list.length)return;
+      const g=document.createElement('optgroup'); g.label=label;
+      list.forEach(m=>{const o=document.createElement('option');o.value=m.id;o.textContent=m.name;g.appendChild(o);});
+      sel.appendChild(g);
+    });
+    if(prev&&all.find(m=>m.id===prev)) sel.value=prev;
+  });
+
+  const s5=document.getElementById('s5_machine');
+  if(s5){
+    const prev=s5.value; s5.innerHTML='';
+    [...SMARLO_MACHINES,...getCustomMachines()].forEach(m=>{
+      const o=document.createElement('option');o.value=m.id;o.textContent=m.name;s5.appendChild(o);
+    });
+    if(prev&&[...SMARLO_MACHINES,...getCustomMachines()].find(m=>m.id===prev)) s5.value=prev;
+  }
+  buildCompareSlots();
+  renderMachineList();
+}
+
+function onMachineChange(p){
+  const m=getMachineById(document.getElementById(p+'_machine').value);
+  const s=parseInt(document.getElementById(p+'_setting').value);
+  if(!m||m.id==='custom')return;
+  document.getElementById(p+'_rtp').value=m.rtp[s];
+  document.getElementById(p+'_bet').value=m.bet;
+  if(p==='t1')calcTab1(); else calcTab2();
+}
+['t1_setting','t2_setting'].forEach(id=>{
+  document.getElementById(id).addEventListener('change',()=>{
+    const p=id.startsWith('t1')?'t1':'t2';
+    const m=getMachineById(document.getElementById(p+'_machine').value);
+    if(m&&m.id!=='custom'){
+      document.getElementById(p+'_rtp').value=m.rtp[parseInt(document.getElementById(p+'_setting').value)];
+    }
+    if(p==='t1')calcTab1(); else calcTab2();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Tab5: スマスロ天井・リセット期待値
+// ═══════════════════════════════════════════════════════════════
+let chart5=null, chartReset=null;
+
+function onSmarloMachineChange(){
+  const id=document.getElementById('s5_machine').value;
+  const m=getSmarloMachine(id);
+  if(!m)return;
+  document.getElementById('s5_ceiling').value  = m.ceiling    || 1500;
+  document.getElementById('s5_atmedals').value = m.atMedals   || 1000;
+  document.getElementById('s5_cost').value     = m.costPerGame|| 20;
+  document.getElementById('s5_slider').max     = m.ceiling    || 1500;
+
+  // リセット恩恵 pre-fill
+  const rb = m.resetBenefit || {};
+  document.getElementById('rb_direct').value   = rb.atDirectHitProb  ?? 0;
+  document.getElementById('rb_highprob').value = rb.highStateProb    ?? 0;
+  document.getElementById('rb_highceil').value = rb.highStateCeiling ?? 400;
+  document.getElementById('rb_bonus').value    = rb.bonusMedals      ?? 0;
+  document.getElementById('rb_note').textContent = rb.note || '';
+
+  renderMachineInfoCard(m);
+  calcTab5();
+}
+
+function renderMachineInfoCard(m){
+  const el=document.getElementById('s5_machine_info');
+  if(!m||!m.ceiling){el.innerHTML='';return;}
+  el.innerHTML=`<div class="machine-info-card">
+    <h3>${m.name} — 基本データ</h3>
+    <div class="info-grid">
+      <div class="info-chip"><div class="l">天井</div><div class="v">${m.ceiling}G</div></div>
+      <div class="info-chip"><div class="l">AT純増(目安)</div><div class="v">${m.atMedals}枚</div></div>
+      <div class="info-chip"><div class="l">実質コスト(目安)</div><div class="v">${m.costPerGame}円/G</div></div>
+      <div class="info-chip"><div class="l">設定1/6</div><div class="v">${m.rtp[1]}% / ${m.rtp[6]}%</div></div>
+    </div>
+    ${m.notes?`<p style="font-size:0.72rem;color:#555;margin-top:6px;">${m.notes}</p>`:''}
+  </div>`;
+}
+
+function setG(g){
+  document.getElementById('s5_current').value=g;
+  document.getElementById('s5_slider').value=g;
+  calcTab5();
+}
+function syncSlider(){ document.getElementById('s5_slider').value=parseInt(document.getElementById('s5_current').value)||0; }
+function syncInput(){ document.getElementById('s5_current').value=parseInt(document.getElementById('s5_slider').value)||0; }
+
+// ─── リセット期待値計算 ───
+function calcResetEV(atMedals, price, ceiling, costPerGame, pDirect, pHigh, highCeil, bonusMedals){
+  // 各状態の確率
+  const pd = Math.min(pDirect/100, 1);
+  const ph = Math.min((1-pd) * (pHigh/100), 1);
+  const pn = 1 - pd - ph;
+
+  const atR  = atMedals * price;
+  const bonR = bonusMedals * price;
+
+  // 保守的EV (各状態で天井到達まで投資)
+  const evDirect = atR;                                         // cost=0
+  const evHigh   = atR - (highCeil > 0 ? highCeil : ceiling) * costPerGame;
+  const evNormal = atR - ceiling * costPerGame;
+
+  const totalEV  = pd*evDirect + ph*evHigh + pn*evNormal + bonR;
+  return { totalEV, evDirect, evHigh, evNormal, pd, ph, pn, bonR };
+}
+
+function calcTab5(){
+  const ceiling  = parseInt(document.getElementById('s5_ceiling').value)  || 1280;
+  const atMedals = parseInt(document.getElementById('s5_atmedals').value) || 1500;
+  const cost     = parseFloat(document.getElementById('s5_cost').value)   || 20;
+  const price    = parseInt(document.getElementById('s5_price').value)    || 20;
+  const curG     = Math.min(parseInt(document.getElementById('s5_current').value)||0, ceiling);
+
+  const pDirect  = parseFloat(document.getElementById('rb_direct').value)   || 0;
+  const pHigh    = parseFloat(document.getElementById('rb_highprob').value)  || 0;
+  const highCeil = parseInt(document.getElementById('rb_highceil').value)   || 400;
+  const bonusMed = parseInt(document.getElementById('rb_bonus').value)      || 0;
+
+  document.getElementById('s5_slider').max = ceiling;
+  if(parseInt(document.getElementById('s5_slider').value)>ceiling)
+    document.getElementById('s5_slider').value=ceiling;
+
+  const atReturn    = atMedals * price;
+  const remainG     = ceiling - curG;
+  const investCur   = remainG * cost;
+  const conservEV   = atReturn - investCur;       // 現在G数からの保守的EV
+  const conservEV0  = atReturn - ceiling * cost;  // 0Gからの保守的EV(恩恵なし)
+  const breakEvenG  = Math.round(ceiling - atReturn / cost);
+  const alwaysPos   = breakEvenG <= 0;
+  const neverPos    = breakEvenG >= ceiling;
+
+  // ─── 通常期待値 結果 ───
+  const c=v=>v>=0?'pos':'neg';
+  document.getElementById('s5_results').innerHTML=`
+    <div class="rb"><div class="lbl">現在G数からの<br>保守的期待値</div><div class="val ${c(conservEV)}">${fmt(conservEV)}円</div></div>
+    <div class="rb"><div class="lbl">天井まで残り</div><div class="val neu">${remainG}G</div></div>
+    <div class="rb"><div class="lbl">残り投資額(最大)</div><div class="val neu">${fmtN(investCur)}円</div></div>
+    <div class="rb"><div class="lbl">AT期待リターン</div><div class="val org">${fmtN(atReturn)}円</div></div>
+    <div class="rb"><div class="lbl">期待値+転換G数</div><div class="val ${alwaysPos?'pos':neverPos?'neg':'org'}">
+      ${alwaysPos?'常にプラス':neverPos?'転換なし':breakEvenG+'G〜'}</div></div>`;
+
+  // バッジ
+  const bel=document.getElementById('s5_badge');
+  if(alwaysPos) bel.innerHTML=`<span class="badge badge-green">0Gから常にプラス — リセット台も基本プラス期待値</span>`;
+  else if(neverPos) bel.innerHTML=`<span class="badge badge-red">保守的計算ではプラス転換なし</span>`;
+  else {
+    const ok=curG>=breakEvenG;
+    bel.innerHTML=`<span class="badge ${ok?'badge-green':'badge-orange'}">
+      ${ok?`現在${curG}G ≥ 狙い目${breakEvenG}G → 打ち時`:`狙い目: ${breakEvenG}G〜 (あと${breakEvenG-curG}G)`}
+    </span>`;
+  }
+
+  // ゾーンバー
+  renderZoneBar(ceiling, curG);
+
+  // ─── EV カーブグラフ ───
+  const labels=[], evData=[];
+  const step=Math.max(10,Math.floor(ceiling/60));
+  for(let g=0;g<=ceiling;g+=step){
+    labels.push(g===0?'0G':g+'G');
+    evData.push(Math.round(atReturn-(ceiling-g)*cost));
+  }
+  if(labels[labels.length-1]!==ceiling+'G'){labels.push(ceiling+'G');evData.push(Math.round(atReturn));}
+
+  const curLabel=curG===0?'0G':curG+'G';
+  let ci=labels.findIndex(l=>l===curLabel);
+  if(ci<0)ci=Math.round(curG/step);
+
+  if(chart5)chart5.destroy();
+  chart5=new Chart(document.getElementById('s5_chart'),{
+    type:'line',
+    data:{labels,datasets:[
+      {label:'保守的期待値(円)',data:evData,
+       borderColor:'#e2934a',fill:true,
+       backgroundColor:'rgba(226,147,74,0.06)',
+       tension:0.3,pointRadius:0,
+       segment:{borderColor:ctx=>ctx.p0.parsed.y>=0?'#4ae24a':'#e24a4a'}},
+      {label:'現在地',data:labels.map((_,i)=>i===ci?evData[i]:null),
+       borderColor:'#fff',backgroundColor:'#fff',pointRadius:7,pointStyle:'triangle',showLine:false},
+    ]},
+    options:{...chartOpts(),plugins:{
+      legend:{display:false},
+      tooltip:{backgroundColor:'#1a1a2e',borderColor:'#3a3a55',borderWidth:1,titleColor:'#aaa',bodyColor:'#e0e0e0',
+               callbacks:{label:ctx=>' '+fmt(ctx.raw)+'円'}},
+    }}
+  });
+
+  // ─── リセット恩恵 計算 ───
+  const R = calcResetEV(atMedals, price, ceiling, cost, pDirect, pHigh, highCeil, bonusMed);
+  const hasBenefit = pDirect > 0 || pHigh > 0 || bonusMed > 0;
+  const diff = R.totalEV - conservEV0;
+
+  // 確率バー
+  const bar=document.getElementById('prob_bar');
+  bar.innerHTML=`
+    ${R.pd>0?`<div class="prob-seg" style="width:${(R.pd*100).toFixed(1)}%;background:#e2c04a;">${(R.pd*100).toFixed(0)}%直撃</div>`:''}
+    ${R.ph>0?`<div class="prob-seg" style="width:${(R.ph*100).toFixed(1)}%;background:#4ae2a0;">${(R.ph*100).toFixed(0)}%高確</div>`:''}
+    <div class="prob-seg" style="width:${(R.pn*100).toFixed(1)}%;background:#3a3a55;">${(R.pn*100).toFixed(0)}%通常</div>`;
+  document.getElementById('prob_legend').innerHTML=`
+    ${R.pd>0?`<span style="color:#e2c04a;">■ AT直撃(${(R.pd*100).toFixed(1)}%)</span>`:''}
+    ${R.ph>0?`<span style="color:#4ae2a0;">■ 高確状態移行(${(R.ph*100).toFixed(1)}%)</span>`:''}
+    <span style="color:#888;">■ 通常状態(${(R.pn*100).toFixed(1)}%)</span>`;
+
+  // リセット期待値 結果ボックス
+  document.getElementById('s5_reset_results').innerHTML=`
+    <div class="rb-reset"><div class="lbl">リセット後<br>恩恵なし保守的EV</div><div class="val ${c(conservEV0)}">${fmt(conservEV0)}円</div></div>
+    <div class="rb-reset"><div class="lbl">リセット後<br>恩恵込み期待値</div><div class="val ${c(R.totalEV)}">${fmt(R.totalEV)}円</div></div>
+    <div class="rb-reset"><div class="lbl">恩恵による<br>上乗せ</div><div class="val ${diff>=0?'pos':'neg'}">${fmt(diff)}円</div></div>
+    ${bonusMed>0?`<div class="rb-reset"><div class="lbl">固定ボーナス</div><div class="val pos">+${fmtN(bonusMed*price)}円</div></div>`:''}`;
+
+  // 状態別内訳
+  let detail='';
+  if(hasBenefit){
+    detail=`<div style="font-size:0.75rem;color:#a08050;margin-top:2px;">各状態からの保守的期待値:</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;">
+        ${R.pd>0?`<div style="background:#1a150a;border:1px solid #4a3510;border-radius:6px;padding:6px 10px;font-size:0.76rem;">
+          AT直撃 (${(R.pd*100).toFixed(1)}%): <strong style="color:#e2c04a;">${fmt(R.evDirect)}円</strong></div>`:''}
+        ${R.ph>0?`<div style="background:#0a1a14;border:1px solid #104a30;border-radius:6px;padding:6px 10px;font-size:0.76rem;">
+          高確状態 (${(R.ph*100).toFixed(1)}%): <strong style="color:#4ae2a0;">${fmt(R.evHigh)}円</strong> <span style="color:#555;">(実効天井${highCeil}G)</span></div>`:''}
+        <div style="background:#0f0f1a;border:1px solid #2a2a40;border-radius:6px;padding:6px 10px;font-size:0.76rem;">
+          通常状態 (${(R.pn*100).toFixed(1)}%): <strong style="${R.evNormal>=0?'color:#4ae24a':'color:#e24a4a'};">${fmt(R.evNormal)}円</strong></div>
+      </div>`;
+  }
+  document.getElementById('s5_reset_detail').innerHTML=detail;
+
+  // 比較棒グラフ (恩恵なし vs 恩恵込み vs 現在地EV)
+  const barLabels=['恩恵なし\n(0G)', hasBenefit?'恩恵込み\n(0G)':null, curG>0?`現在\n(${curG}G)`:null].filter(Boolean);
+  const barData  =[conservEV0,       hasBenefit?R.totalEV:null,         curG>0?conservEV:null].filter(v=>v!=null);
+  const barColors=[
+    conservEV0>=0?'rgba(74,226,74,0.7)':'rgba(226,74,74,0.7)',
+    hasBenefit?(R.totalEV>=0?'rgba(74,226,160,0.8)':'rgba(226,74,74,0.7)'):null,
+    curG>0?(conservEV>=0?'rgba(74,144,226,0.8)':'rgba(226,74,74,0.7)'):null,
+  ].filter(Boolean);
+
+  if(chartReset)chartReset.destroy();
+  chartReset=new Chart(document.getElementById('s5_reset_chart'),{
+    type:'bar',
+    data:{labels:barLabels,datasets:[{
+      label:'期待値(円)',data:barData,
+      backgroundColor:barColors,
+      borderColor:barColors.map(c=>c.replace('0.7','1').replace('0.8','1')),
+      borderWidth:2,borderRadius:8,
+    }]},
+    options:{...chartOpts(),
+      plugins:{
+        legend:{display:false},
+        tooltip:{backgroundColor:'#1a1a2e',borderColor:'#3a3a55',borderWidth:1,titleColor:'#aaa',bodyColor:'#e0e0e0',
+                 callbacks:{label:ctx=>' '+fmt(ctx.raw)+'円'}},
+      }
+    }
+  });
+
+  // 自動判断
+  renderJudgment(conservEV, R, curG, ceiling, breakEvenG, cost, atMedals, price, pHigh, highCeil);
+}
+
+function renderZoneBar(ceiling,curG){
+  const id=document.getElementById('s5_machine').value;
+  const m=getSmarloMachine(id);
+  const el=document.getElementById('s5_zone_bar'); if(!el)return;
+  if(!m||!m.zones||!m.zones.length){el.innerHTML='';return;}
+  const segs=m.zones.map(z=>{
+    const l=(z.start/ceiling*100).toFixed(1),w=((z.end-z.start)/ceiling*100).toFixed(1);
+    return `<div class="zone-seg" style="left:${l}%;width:${w}%;background:${z.color};">${z.label}</div>`;
+  }).join('');
+  const cp=Math.min(curG/ceiling*100,100).toFixed(1);
+  el.innerHTML=`<div style="font-size:0.68rem;color:#555;margin-top:6px;">ゾーン目安（白線=現在地）</div>
+    <div class="zone-bar">${segs}<div style="position:absolute;top:0;left:${cp}%;width:2px;height:100%;background:#fff;z-index:10;"></div></div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Tab1: 損益シミュレーション
+// ═══════════════════════════════════════════════════════════════
+let chart1=null;
+function calcTab1(){
+  const rtp  =parseFloat(document.getElementById('t1_rtp').value)/100;
+  const bet  =parseInt(document.getElementById('t1_bet').value)||3;
+  const price=parseInt(document.getElementById('t1_price').value)||20;
+  const gph  =parseInt(document.getElementById('t1_gph').value)||450;
+  const games=parseInt(document.getElementById('t1_games').value)||1000;
+  const invest=games*bet*price, expPL=invest*(rtp-1), hrs=games/gph;
+  const c=v=>v>=0?'pos':'neg';
+  document.getElementById('t1_results').innerHTML=`
+    <div class="rb"><div class="lbl">期待損益</div><div class="val ${c(expPL)}">${fmt(expPL)}円</div></div>
+    <div class="rb"><div class="lbl">期待メダル収支</div><div class="val ${c(expPL)}">${fmt(games*bet*(rtp-1))}枚</div></div>
+    <div class="rb"><div class="lbl">総投資額</div><div class="val neu">${fmtN(invest)}円</div></div>
+    <div class="rb"><div class="lbl">時給換算</div><div class="val ${c(expPL)}">${fmt(expPL/hrs)}円/h</div></div>
+    <div class="rb"><div class="lbl">プレイ時間</div><div class="val neu">${hrs.toFixed(1)}時間</div></div>
+    <div class="rb"><div class="lbl">機械割</div><div class="val ${rtp>=1?'pos':'neg'}">${(rtp*100).toFixed(1)}%</div></div>`;
+  const ls=[],ds=[]; const s=Math.max(50,Math.floor(games/40));
+  for(let g=0;g<=games;g+=s){ls.push(g+'G');ds.push(Math.round(g*bet*price*(rtp-1)));}
+  if(ls[ls.length-1]!==games+'G'){ls.push(games+'G');ds.push(Math.round(expPL));}
+  if(chart1)chart1.destroy();
+  chart1=new Chart(document.getElementById('t1_chart'),{type:'line',
+    data:{labels:ls,datasets:[{label:'期待損益(円)',data:ds,borderColor:expPL>=0?'#4ae24a':'#e24a4a',
+      backgroundColor:(expPL>=0?'#4ae24a':'#e24a4a')+'22',fill:true,tension:0.3,pointRadius:0}]},
+    options:chartOpts()});
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Tab2: 現在収支
+// ═══════════════════════════════════════════════════════════════
+let chart2=null;
+function calcTab2(){
+  const rtp=parseFloat(document.getElementById('t2_rtp').value)/100;
+  const bet=parseInt(document.getElementById('t2_bet').value)||3;
+  const price=parseInt(document.getElementById('t2_price').value)||20;
+  const played=parseInt(document.getElementById('t2_played').value)||0;
+  const invest=parseInt(document.getElementById('t2_invest').value)||0;
+  const medals=parseInt(document.getElementById('t2_medals').value)||0;
+  const future=parseInt(document.getElementById('t2_future').value)||0;
+  const curPL=medals*price-invest, futPL=future*bet*price*(rtp-1), finPL=curPL+futPL;
+  const impl=played>0?(medals*price)/(played*bet*price)*100:0;
+  const c=v=>v>=0?'pos':'neg';
+  document.getElementById('t2_results').innerHTML=`
+    <div class="rb"><div class="lbl">現在収支</div><div class="val ${c(curPL)}">${fmt(curPL)}円</div></div>
+    <div class="rb"><div class="lbl">今後の期待損益</div><div class="val ${c(futPL)}">${fmt(futPL)}円</div></div>
+    <div class="rb"><div class="lbl">最終期待収支</div><div class="val ${c(finPL)}">${fmt(finPL)}円</div></div>
+    <div class="rb"><div class="lbl">今後追加投資</div><div class="val neu">${fmtN(future*bet*price)}円</div></div>
+    <div class="rb"><div class="lbl">実績機械割</div><div class="val ${impl>=100?'pos':'neg'}">${impl.toFixed(1)}%</div></div>
+    <div class="rb"><div class="lbl">想定機械割</div><div class="val ${rtp>=1?'pos':'neg'}">${(rtp*100).toFixed(1)}%</div></div>`;
+  const ls=[],pd=[],fd=[]; const total=played+future; const s=Math.max(50,Math.floor(total/50));
+  for(let g=0;g<=played;g+=s){ls.push(g+'G');pd.push(Math.round(played>0?curPL*g/played:0));fd.push(null);}
+  if(!ls.includes(played+'G')){ls.push(played+'G');pd.push(Math.round(curPL));fd.push(Math.round(curPL));}
+  else fd[ls.indexOf(played+'G')]=Math.round(curPL);
+  const fs=Math.max(50,Math.floor(future/20));
+  for(let g=fs;g<=future;g+=fs){ls.push((played+g)+'G');pd.push(null);fd.push(Math.round(curPL+g*bet*price*(rtp-1)));}
+  if(future>0){ls.push((played+future)+'G');pd.push(null);fd.push(Math.round(finPL));}
+  if(chart2)chart2.destroy();
+  chart2=new Chart(document.getElementById('t2_chart'),{type:'line',
+    data:{labels:ls,datasets:[
+      {label:'過去実績ベース(円)',data:pd,borderColor:'#4a90e2',backgroundColor:'#4a90e222',fill:true,tension:0.3,pointRadius:0},
+      {label:'今後の期待値(円)', data:fd,borderColor:finPL>=0?'#4ae24a':'#e24a4a',backgroundColor:(finPL>=0?'#4ae24a':'#e24a4a')+'22',fill:true,tension:0.3,pointRadius:0,borderDash:[6,3]},
+    ]},
+    options:{...chartOpts(),plugins:{legend:{labels:{color:'#aaa',font:{size:11}}},
+      tooltip:{backgroundColor:'#1a1a2e',borderColor:'#3a3a55',borderWidth:1,titleColor:'#aaa',bodyColor:'#e0e0e0',
+               callbacks:{label:ctx=>' '+fmt(ctx.raw)+'円'}}}}});
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Tab3: 複数台比較
+// ═══════════════════════════════════════════════════════════════
+let chart3=null;
+function buildCompareSlots(){
+  const all=getAllMachines();
+  const opts=all.map(m=>`<option value="${m.id}">${m.name}</option>`).join('');
+  const cont=document.getElementById('compare_slots'); if(!cont)return;
+  cont.innerHTML='';
+  const colors=['#4a90e2','#4ae24a','#e2a44a','#e24a90'];
+  const names=['台A','台B','台C','台D'];
+  const defM=['sm_hokuto','sm_ghoul','myjug5','sm_baki'];
+  const defS=[6,5,4,3];
+  for(let i=0;i<4;i++){
+    const m=getMachineById(defM[i])||all[0];
+    cont.innerHTML+=`<div class="compare-slot" style="border-left:3px solid ${colors[i]}">
+      <h3 style="color:${colors[i]};font-size:0.82rem;margin-bottom:8px;">${names[i]}</h3>
+      <div class="form-grid" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">
+        <div class="form-group"><label>機種</label><select id="c${i}_machine" onchange="onCompareChange(${i})">${opts}</select></div>
+        <div class="form-group"><label>設定</label><select id="c${i}_setting">
+          ${[1,2,3,4,5,6].map(s=>`<option value="${s}" ${s===defS[i]?'selected':''}>${s}</option>`).join('')}
+        </select></div>
+        <div class="form-group"><label>機械割 (%)</label><input type="number" id="c${i}_rtp" value="${m.rtp[defS[i]]||100}" step="0.1"></div>
+        <div class="form-group"><label>ベット</label><input type="number" id="c${i}_bet" value="${m.bet||3}" min="1"></div>
+        <div class="form-group"><label>単価(円)</label><input type="number" id="c${i}_price" value="20" min="1"></div>
+      </div></div>`;
+    setTimeout(()=>{ const el=document.getElementById('c'+i+'_machine'); if(el)el.value=defM[i]; },0);
+  }
+  document.querySelectorAll('[id^="c"][id$="_setting"]').forEach((el,i)=>el.addEventListener('change',()=>onCompareChange(i)));
+}
+function onCompareChange(i){
+  const m=getMachineById(document.getElementById('c'+i+'_machine').value);
+  const s=parseInt(document.getElementById('c'+i+'_setting').value);
+  if(m&&m.id!=='custom'){document.getElementById('c'+i+'_rtp').value=m.rtp[s];document.getElementById('c'+i+'_bet').value=m.bet;}
+}
+function calcTab3(){
+  const colors=['#4a90e2','#4ae24a','#e2a44a','#e24a90'];
+  const names=['台A','台B','台C','台D'];
+  const rows=[];
+  for(let i=0;i<4;i++){
+    const rtp=parseFloat(document.getElementById('c'+i+'_rtp').value)/100;
+    const bet=parseInt(document.getElementById('c'+i+'_bet').value)||3;
+    const price=parseInt(document.getElementById('c'+i+'_price').value)||20;
+    const mName=document.getElementById('c'+i+'_machine').options[document.getElementById('c'+i+'_machine').selectedIndex].text;
+    const s=document.getElementById('c'+i+'_setting').value;
+    const pl=Math.round(1000*bet*price*(rtp-1));
+    rows.push({name:names[i],machine:mName,setting:s,rtp:(rtp*100).toFixed(1),pl,hourly:Math.round(pl/(1000/450))});
+  }
+  document.getElementById('t3_table').innerHTML=`<table>
+    <tr><th>台</th><th>機種</th><th>設定</th><th>機械割</th><th>期待損益/1000G</th><th>時給換算</th></tr>
+    ${rows.map(r=>`<tr><td><strong>${r.name}</strong></td><td>${r.machine}</td><td>${r.setting}</td>
+      <td style="color:${parseFloat(r.rtp)>=100?'#4ae24a':'#e24a4a'}">${r.rtp}%</td>
+      <td style="color:${r.pl>=0?'#4ae24a':'#e24a4a'}">${fmt(r.pl)}円</td>
+      <td style="color:${r.hourly>=0?'#4ae24a':'#e24a4a'}">${fmt(r.hourly)}円/h</td></tr>`).join('')}
+  </table>`;
+  if(chart3)chart3.destroy();
+  chart3=new Chart(document.getElementById('t3_chart'),{type:'bar',
+    data:{labels:rows.map(r=>r.name),datasets:[{label:'期待損益/1000G(円)',data:rows.map(r=>r.pl),
+      backgroundColor:colors.map(c=>c+'cc'),borderColor:colors,borderWidth:2,borderRadius:6}]},
+    options:{...chartOpts(),plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:ctx=>fmt(ctx.raw)+'円'}}}}});
+}
+
+// ─── 機種管理 ───
+function addCustomMachine(){
+  const name=document.getElementById('m_name').value.trim();
+  if(!name){alert('機種名を入力してください');return;}
+  const rtps=[1,2,3,4,5,6].map(i=>parseFloat(document.getElementById('m_r'+i).value)||0);
+  const bet=parseInt(document.getElementById('m_bet').value)||3;
+  const customs=getCustomMachines();
+  customs.push({id:'custom_'+Date.now(),name,bet,rtp:[0,...rtps],isCustom:true,category:'custom'});
+  saveCustomMachines(customs);
+  populateMachineSelects();
+  alert(`「${name}」を追加しました`);
+  ['m_name','m_r1','m_r2','m_r3','m_r4','m_r5','m_r6'].forEach(id=>document.getElementById(id).value='');
+}
+function deleteMachine(id){
+  if(!confirm('削除しますか？'))return;
+  saveCustomMachines(getCustomMachines().filter(m=>m.id!==id));
+  populateMachineSelects();
+}
+function renderMachineList(){
+  const list=document.getElementById('machine_list'); if(!list)return;
+  const all=getAllMachines().filter(m=>m.id!=='custom'&&m.id!=='sm_custom');
+  list.innerHTML=all.map(m=>{
+    const rtpLine=m.rtp.slice(1).map((r,i)=>`設${i+1}:${r}%`).join(' ');
+    const del=m.isCustom?`<button class="btn btn-danger btn-sm" onclick="deleteMachine('${m.id}')">削除</button>`:
+      `<span style="color:#555;font-size:0.72rem;">${m.category==='smarlo'?'スマスロ':'プリセット'}</span>`;
+    return `<div class="machine-item"><div><span style="color:#ccc;">${m.name}</span><br><small>${rtpLine} / ベット${m.bet}枚</small></div>${del}</div>`;
+  }).join('');
+}
+
+// ─── Chart共通 ───
+function chartOpts(){
+  return {responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+    scales:{
+      x:{ticks:{color:'#666',font:{size:10},maxTicksLimit:10},grid:{color:'#1e1e30'}},
+      y:{ticks:{color:'#888',callback:v=>fmt(v)},grid:{color:'#1e1e30'}}
+    },
+    plugins:{legend:{display:false},
+      tooltip:{backgroundColor:'#1a1a2e',borderColor:'#3a3a55',borderWidth:1,titleColor:'#aaa',bodyColor:'#e0e0e0',
+               callbacks:{label:ctx=>' '+fmt(ctx.raw)+'円'}}}};
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 自動判断アドバイス
+// ═══════════════════════════════════════════════════════════════
+function renderJudgment(conservEV, R, curG, ceiling, breakEvenG, cost, atMedals, price, pHigh, highCeil){
+  const remainG    = ceiling - curG;
+  const isReset    = curG === 0;
+  const nearCeil   = remainG <= ceiling * 0.25;  // 天井圏（残り25%以内）
+  const hasBenefit = R.pd > 0 || R.ph > 0;
+  const ev         = isReset ? R.totalEV : conservEV;
+  const maxInvest  = remainG * cost;
+
+  // ─── 判定ロジック ───
+  let cls, icon, title, sub;
+  if (ev >= 2000) {
+    cls='good';   icon='◎'; title='積極的に打てる'; sub='期待値がプラスで優位な状況です';
+  } else if (ev >= 0) {
+    cls='good';   icon='○'; title='打ち時';         sub='プラス期待値。打つ価値があります';
+  } else if (ev >= -2000) {
+    cls='caution'; icon='△'; title='様子見';        sub='微マイナス。状況次第では継続検討の余地あり';
+  } else if (ev >= -5000) {
+    cls='caution'; icon='▲'; title='やや不利';      sub='明確なマイナス期待値。狙いを絞って判断を';
+  } else {
+    cls='bad';    icon='×'; title='撤退推奨';       sub='大きなマイナス期待値。継続はリスクが高い';
+  }
+
+  // ─── 理由リスト ───
+  const reasons = [];
+
+  if (isReset) {
+    reasons.push({ text:`リセット直後(0G) — ${hasBenefit ? 'リセット恩恵込みで' : ''}期待値 ${fmt(R.totalEV)}円`, type: ev>=0?'':'warn' });
+    if (R.pd > 0) reasons.push({ text:`AT直撃確率 ${(R.pd*100).toFixed(1)}% — 当たれば追加コストなし (期待値 ${fmt(R.evDirect)}円)`, type:'' });
+    if (R.ph > 0) reasons.push({ text:`高確率状態 移行確率 ${(R.ph*100).toFixed(1)}% — 実効天井${highCeil}Gに短縮 (期待値 ${fmt(R.evHigh)}円)`, type:'' });
+    if (!hasBenefit) reasons.push({ text:`リセット恩恵なし — 天井${ceiling}Gまで最大${fmtN(maxInvest)}円の投資が必要`, type:'warn' });
+  } else {
+    reasons.push({ text:`現在 ${curG}G — 残り ${remainG}G、最大追加投資 ${fmtN(maxInvest)}円`, type:'' });
+    if (nearCeil) {
+      reasons.push({ text:`天井圏内 — あと${remainG}Gで天井。ここまで来たら打ち切り推奨`, type:'' });
+    } else if (breakEvenG > 0 && breakEvenG < ceiling) {
+      if (curG >= breakEvenG) {
+        reasons.push({ text:`期待値プラス転換ライン(${breakEvenG}G)を超過済み — 有利な状況`, type:'' });
+      } else {
+        reasons.push({ text:`期待値プラス転換は ${breakEvenG}G〜 — あと ${breakEvenG-curG}G必要`, type:'warn' });
+      }
+    }
+    reasons.push({ text:`現在G数からの保守的期待値: ${fmt(conservEV)}円`, type: conservEV>=0?'':'warn' });
+  }
+
+  // AT純増のコスパチェック
+  const roi = atMedals * price / (ceiling * cost);
+  if (roi < 0.8) reasons.push({ text:`AT純増リターン(${fmtN(atMedals*price)}円) が天井投資額(${fmtN(ceiling*cost)}円) を大きく下回る — 機種選択を再考`, type:'danger' });
+
+  // ─── 損切りライン ───
+  let stopLossHtml = '';
+  if (isReset && !nearCeil) {
+    const slG  = Math.round(ceiling * 0.3);
+    const slYen = Math.round(slG * cost);
+    stopLossHtml = `リセット直後からの場合、<strong>${slG}G(約${fmtN(slYen)}円)</strong> を目安に、AT当選がなければ状況を再評価してください。`;
+    if (hasBenefit) stopLossHtml += ` 高確状態なら実効天井 ${highCeil}G まで様子見。`;
+  } else if (!nearCeil) {
+    const slRemain = Math.round(remainG * 0.5);
+    const slYen    = Math.round(slRemain * cost);
+    stopLossHtml = `追加で <strong>${slRemain}G(約${fmtN(slYen)}円)</strong> 以内にAT当選がなければ撤退を検討。残り${remainG}Gなら天井まで打ち切りも選択肢。`;
+  } else {
+    stopLossHtml = `天井圏(<strong>残り${remainG}G</strong>)まで来たら打ち切り推奨。途中撤退はここまでの投資が無駄になりやすい。`;
+  }
+
+  // ─── リスク説明 ───
+  const risks = [];
+  risks.push('期待値は長期平均。短期では結果が大きくブレます');
+  if (maxInvest > 20000) risks.push(`天井まで最大 ${fmtN(maxInvest)}円 の出費リスク。資金管理に注意`);
+  if (cls === 'bad') risks.push('現状は撤退が最も合理的な選択です');
+  if (isReset && !hasBenefit) risks.push('恩恵なしのリセット台は0Gからの長期戦。資金が必要');
+
+  // ─── レンダリング ───
+  const reasonsHtml = reasons.map(r => `<li class="${r.type}">${r.text}</li>`).join('');
+  const risksHtml   = risks.map(r => `<li class="warn">${r.text}</li>`).join('');
+
+  document.getElementById('s5_judgment').innerHTML = `
+    <div class="judge-card ${cls}">
+      <div class="judge-verdict ${cls}">${icon} ${title}</div>
+      <div class="judge-sub">${sub}</div>
+
+      <div class="judge-section">
+        <h4>判断根拠</h4>
+        <ul class="judge-reasons">${reasonsHtml}</ul>
+      </div>
+
+      <div class="judge-section">
+        <h4>損切りライン</h4>
+        <div class="stoploss-box">${stopLossHtml}</div>
+      </div>
+
+      <div class="judge-section">
+        <h4>リスク</h4>
+        <ul class="judge-reasons">${risksHtml}</ul>
+      </div>
+    </div>`;
+}
+
+// ─── ユーティリティ ───
+function fmt(v) { const n=Math.round(v); return (n>=0?'+':'')+n.toLocaleString(); }
+function fmtN(v){ return Math.round(v).toLocaleString(); }
+
+function switchTab(id,btn){
+  document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el=>el.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+  if(id==='tab1')calcTab1();
+  if(id==='tab2')calcTab2();
+  if(id==='tab3')calcTab3();
+  if(id==='tab5')calcTab5();
+}
+
+// Tab1/2 自動再計算
+['t1_rtp','t1_bet','t1_price','t1_gph'].forEach(id=>document.getElementById(id).addEventListener('input',calcTab1));
+['t2_rtp','t2_bet','t2_price','t2_played','t2_invest','t2_medals'].forEach(id=>document.getElementById(id).addEventListener('input',calcTab2));
+
+// ─── 初期化 ───
+populateMachineSelects();
+document.getElementById('s5_machine').value='sm_hokuto';
+onSmarloMachineChange();
+document.getElementById('t1_machine').value='sm_hokuto';
+onMachineChange('t1');
+document.getElementById('t2_machine').value='sm_hokuto';
+onMachineChange('t2');
+calcTab1(); calcTab2(); calcTab3();
+</script>
+</body>
+</html>
