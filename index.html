@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>スロット期待値計算機</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<header>
+  <span class="header-title">🎰 スロット期待値計算機</span>
+</header>
+
+<nav class="tabs">
+  <button class="tab active" data-tab="calc">計算</button>
+  <button class="tab" data-tab="db">台一覧</button>
+  <button class="tab" data-tab="add">台を追加</button>
+</nav>
+
+<main>
+
+  <!-- ══ 計算タブ ══ -->
+  <section id="tab-calc" class="tab-content active">
+
+    <div class="card">
+      <label class="field-label">台を選ぶ</label>
+      <select id="sel-machine"><option value="">-- 選択してください --</option></select>
+      <div id="machine-summary" class="machine-summary hidden"></div>
+    </div>
+
+    <div class="card">
+      <div class="field-row">
+        <div class="field">
+          <label class="field-label">現在のG数</label>
+          <input type="number" id="inp-games" placeholder="例: 800" inputmode="numeric" min="0">
+        </div>
+        <div class="field">
+          <label class="field-label">交換率</label>
+          <select id="sel-rate">
+            <option value="5">等価 (5枚)</option>
+            <option value="5.6" selected>5.6枚</option>
+            <option value="6">6枚</option>
+            <option value="7">7枚</option>
+            <option value="custom">カスタム</option>
+          </select>
+        </div>
+      </div>
+      <input type="number" id="inp-custom-rate" class="hidden" placeholder="交換率を入力 (例: 5.5)" step="0.1" inputmode="decimal">
+      <button id="btn-calc" class="btn-primary" disabled>期待値を計算する</button>
+    </div>
+
+    <div id="results" class="hidden">
+      <div class="ev-cards">
+        <div class="ev-card">
+          <div class="ev-card-label">天井期待値</div>
+          <div class="ev-card-value" id="res-ceiling">¥0</div>
+          <div class="ev-card-sub" id="res-ceiling-sub"></div>
+        </div>
+        <div class="ev-card">
+          <div class="ev-card-label">リセット天井期待値</div>
+          <div class="ev-card-value" id="res-reset">¥0</div>
+          <div class="ev-card-sub" id="res-reset-sub"></div>
+        </div>
+      </div>
+
+      <div class="card info-card">
+        <div class="info-row">
+          <span class="info-label">狙い目開始G数</span>
+          <span id="res-profitable" class="info-value">--</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">1Gあたりコスト</span>
+          <span id="res-cpg" class="info-value">--</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">天井までの投資</span>
+          <span id="res-cost" class="info-value">--</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">天井時期待回収</span>
+          <span id="res-pay" class="info-value">--</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="chart-title">期待値グラフ <span class="chart-sub">（ピンク線 = 現在地 / 緑線 = 狙い目）</span></div>
+        <div class="chart-wrap">
+          <canvas id="ev-chart"></canvas>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ══ 台一覧タブ ══ -->
+  <section id="tab-db" class="tab-content">
+    <div id="machine-list"></div>
+  </section>
+
+  <!-- ══ 台を追加タブ ══ -->
+  <section id="tab-add" class="tab-content">
+    <div class="card">
+      <h2 class="card-title">台情報を入力</h2>
+      <form id="form-add">
+        <div class="field">
+          <label class="field-label">機種名 <span class="req">*</span></label>
+          <input type="text" name="name" placeholder="例: スマスロ北斗の拳" required>
+        </div>
+        <div class="field">
+          <label class="field-label">メーカー</label>
+          <input type="text" name="maker" placeholder="例: サミー">
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label">機械割 最小(%)</label>
+            <input type="number" name="rateMin" placeholder="98.0" step="0.1" inputmode="decimal">
+          </div>
+          <div class="field">
+            <label class="field-label">機械割 最大(%)</label>
+            <input type="number" name="rateMax" placeholder="113.0" step="0.1" inputmode="decimal">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label">天井G数</label>
+            <input type="number" name="ceiling" placeholder="1268" inputmode="numeric">
+          </div>
+          <div class="field">
+            <label class="field-label">リセット後天井G数</label>
+            <input type="number" name="resetCeiling" placeholder="800" inputmode="numeric">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label">コイン持ち (G/50枚)</label>
+            <input type="number" name="coinHold" placeholder="34.7" step="0.1" inputmode="decimal">
+          </div>
+          <div class="field">
+            <label class="field-label">AT純増 (枚/G)</label>
+            <input type="number" name="atGain" placeholder="4.1" step="0.1" inputmode="decimal">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label">AT平均獲得枚数</label>
+            <input type="number" name="atAvgCoins" placeholder="700" inputmode="numeric">
+          </div>
+          <div class="field">
+            <label class="field-label">天井時平均獲得枚数</label>
+            <input type="number" name="ceilingCoins" placeholder="833" inputmode="numeric">
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label">メモ</label>
+          <textarea name="notes" rows="2" placeholder="特記事項など"></textarea>
+        </div>
+        <button type="submit" class="btn-primary">登録する</button>
+        <div id="add-status" class="status-msg"></div>
+      </form>
+    </div>
+  </section>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
