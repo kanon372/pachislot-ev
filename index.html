@@ -48,6 +48,12 @@
         </div>
       </div>
       <input type="number" id="inp-custom-rate" class="hidden" placeholder="交換率を入力 (例: 5.5)" step="0.1" inputmode="decimal">
+      <div id="shutter-option" class="hidden" style="margin-bottom:10px">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 12px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
+          <input type="checkbox" id="shutter-check" style="width:18px;height:18px;accent-color:var(--accent)">
+          <span id="shutter-label" class="field-label" style="margin:0;font-size:13px;color:var(--text)">シャッター確認済み</span>
+        </label>
+      </div>
       <button id="btn-calc" class="btn-primary" disabled>期待値を計算する</button>
     </div>
 

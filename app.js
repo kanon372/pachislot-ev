@@ -42,7 +42,10 @@ const HOKUTO2 = {
   coinHold: 31.5, atGain: 4.0,
   atAvgCoins: 800, ceilingCoins: 1220,
   resetCeilingCoins: 1164,
-  notes: '天井1536あべし。設定変更後1280あべし天井（リセット狙い目625あべし〜）。ゾーン193〜256あべし。',
+  shutterCeiling: 896,
+  shutterCoins: 1700,
+  shutterLabel: 'シャッター確認済み（モードB以上・896G天井）',
+  notes: '天井1536あべし。設定変更後1280あべし天井（リセット狙い目625あべし〜）。ゾーン193〜256あべし。シャッター確認でモードB以上確定（896G天井）。',
 };
 
 function getMachines() {
@@ -130,11 +133,14 @@ function evSeries(ceilG, coins, hold, rate) {
 }
 
 // 狙い目G数（EVがプラスになる最初のG数）
+// 戻り値: 0=常時プラス, 正の数=そのG以降プラス, null=常時マイナス
 function profitableG(ceilG, coins, hold, rate) {
   const c   = cpg(hold);
   const pay = coins * coinYen(rate);
   const be  = Math.ceil(ceilG - pay / c);
-  return be >= 0 && be < ceilG ? be : null;
+  if (be < 0)     return 0;    // 常時プラス
+  if (be >= ceilG) return null; // 常時マイナス
+  return be;
 }
 
 // ════════════════════════════════════════════
@@ -203,6 +209,16 @@ $('sel-machine').addEventListener('change', e => {
   `;
   summary.classList.remove('hidden');
   $('btn-calc').disabled = false;
+
+  // シャッターオプション表示切り替え
+  const shutterOpt = $('shutter-option');
+  if (m.shutterCeiling) {
+    $('shutter-label').textContent = m.shutterLabel || `シャッター確認済み（${m.shutterCeiling}G天井）`;
+    shutterOpt.classList.remove('hidden');
+  } else {
+    shutterOpt.classList.add('hidden');
+    $('shutter-check').checked = false;
+  }
 });
 
 // ════════════════════════════════════════════
@@ -228,11 +244,18 @@ $('btn-calc').addEventListener('click', () => {
   const rate = getRate();
   const m = currentMachine;
 
-  // AT天井EV
-  const cev = calcEV(curG, m.ceiling, m.ceilingCoins, m.coinHold, rate);
+  // シャッターモード判定
+  const useShutter = !!(m.shutterCeiling && $('shutter-check').checked);
+  const effCeiling = useShutter ? m.shutterCeiling : m.ceiling;
+  const effCoins   = useShutter ? m.shutterCoins   : m.ceilingCoins;
 
-  // EVカード1：AT天井
+  // AT天井EV
+  const cev = calcEV(curG, effCeiling, effCoins, m.coinHold, rate);
+
+  // EVカード1：AT天井（またはシャッターモード）
   const cevEl = $('res-ceiling');
+  const cevLabel = useShutter ? `シャッター天井期待値（${m.shutterCeiling}G）` : '天井期待値';
+  $('res-ceiling').previousElementSibling.textContent = cevLabel;
   cevEl.textContent = fmtYen(cev.ev);
   cevEl.className = 'ev-card-value ' + evClass(cev.ev);
   $('res-ceiling-sub').textContent = `残り${cev.rem}G　投資${fmtAbs(cev.cost)}→回収${fmtAbs(cev.pay)}`;
@@ -290,10 +313,13 @@ $('btn-calc').addEventListener('click', () => {
     }
   }
 
-  // 狙い目（AT天井基準）
-  const pf = profitableG(m.ceiling, m.ceilingCoins, m.coinHold, rate);
+  // 狙い目（シャッターモード時はシャッター天井基準）
+  const pf = profitableG(effCeiling, effCoins, m.coinHold, rate);
   const pfEl = $('res-profitable');
-  if (pf !== null) {
+  if (pf === 0) {
+    pfEl.textContent = '0G〜（常時プラス）';
+    pfEl.className = 'info-value pos';
+  } else if (pf !== null) {
     pfEl.textContent = pf.toLocaleString() + 'G〜';
     pfEl.className = 'info-value pos';
   } else {
@@ -306,7 +332,7 @@ $('btn-calc').addEventListener('click', () => {
   $('res-pay').textContent  = fmtAbs(cev.pay);
 
   // グラフ
-  renderChart(evSeries(m.ceiling, m.ceilingCoins, m.coinHold, rate), curG, pf);
+  renderChart(evSeries(effCeiling, effCoins, m.coinHold, rate), curG, pf);
 
   $('results').classList.remove('hidden');
   setTimeout(() => $('results').scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
