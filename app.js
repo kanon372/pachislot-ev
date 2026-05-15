@@ -19,6 +19,20 @@ const SEED = [
   }
 ];
 
+const GHOUL = {
+  id: 2,
+  name: 'L東京喰種（東京グール）',
+  maker: 'Spiky',
+  rateMin: 97.5, rateMax: 114.9,
+  ceiling: 1200, resetCeiling: 200,
+  coinHold: 31.1, atGain: 4.0,
+  atAvgCoins: 415, ceilingCoins: 800,
+  hasCZ: true,
+  czCeiling: 600,
+  czAvgCoins: 322,
+  notes: 'CZ天井600G（CZ突入→AT期待度約77%）。AT天井1200G（AT確定）。リセット後200GでCZ天井。',
+};
+
 function getMachines() {
   try {
     const d = JSON.parse(localStorage.getItem(STORAGE_KEY));
@@ -41,6 +55,14 @@ function saveMachine(m) {
 
 function deleteMachine(id) {
   setMachines(getMachines().filter(m => m.id !== id));
+}
+
+// 組み込み機種を必要に応じて追加（既存データを消さない）
+function initBuiltins() {
+  const list = getMachines();
+  const ids = new Set(list.map(m => m.id));
+  const toAdd = [GHOUL].filter(b => !ids.has(b.id));
+  if (toAdd.length > 0) setMachines([...list, ...toAdd]);
 }
 
 // ════════════════════════════════════════════
@@ -139,10 +161,12 @@ $('sel-machine').addEventListener('change', e => {
   }
 
   const m = currentMachine;
+  const czInfo = m.hasCZ && m.czCeiling
+    ? `　CZ天井: ${m.czCeiling}G（CZ突入）` : '';
   summary.innerHTML = `
     <strong>${m.name}</strong>　${m.maker || ''}<br>
     機械割: ${m.rateMin}%〜${m.rateMax}%
-    天井: ${m.ceiling}G（リセット後 ${m.resetCeiling || '未設定'}G）<br>
+    天井: ${m.ceiling}G（リセット後 ${m.resetCeiling || '未設定'}G）${czInfo}<br>
     コイン持ち: ${m.coinHold}G/50枚　AT純増: ${m.atGain}枚/G　天井時平均: ${m.ceilingCoins}枚
     ${m.notes ? `<br>📝 ${m.notes}` : ''}
   `;
@@ -173,36 +197,69 @@ $('btn-calc').addEventListener('click', () => {
   const rate = getRate();
   const m = currentMachine;
 
-  // 天井EV
+  // AT天井EV
   const cev = calcEV(curG, m.ceiling, m.ceilingCoins, m.coinHold, rate);
 
-  // リセット天井EV
-  const rev = m.resetCeiling
-    ? calcEV(curG, m.resetCeiling, m.ceilingCoins, m.coinHold, rate)
-    : null;
-
-  // 狙い目
-  const pf = profitableG(m.ceiling, m.ceilingCoins, m.coinHold, rate);
-
-  // EVカード：天井
+  // EVカード1：AT天井
   const cevEl = $('res-ceiling');
   cevEl.textContent = fmtYen(cev.ev);
   cevEl.className = 'ev-card-value ' + evClass(cev.ev);
   $('res-ceiling-sub').textContent = `残り${cev.rem}G　投資${fmtAbs(cev.cost)}→回収${fmtAbs(cev.pay)}`;
 
-  // EVカード：リセット
+  // EVカード2：CZ天井 or リセット天井
+  const resetLabel = $('res-reset-label');
   const revEl = $('res-reset');
-  if (rev) {
-    revEl.textContent = fmtYen(rev.ev);
-    revEl.className = 'ev-card-value ' + evClass(rev.ev);
-    $('res-reset-sub').textContent = `残り${rev.rem}G→${m.resetCeiling}G天井　投資${fmtAbs(rev.cost)}`;
+  const rowCzReset = $('row-cz-reset');
+
+  if (m.hasCZ && m.czCeiling) {
+    resetLabel.textContent = 'CZ天井期待値';
+
+    if (curG < m.czCeiling) {
+      const czev = calcEV(curG, m.czCeiling, m.czAvgCoins, m.coinHold, rate);
+      revEl.textContent = fmtYen(czev.ev);
+      revEl.className = 'ev-card-value ' + evClass(czev.ev);
+      $('res-reset-sub').textContent = `残り${czev.rem}G→${m.czCeiling}G天井　投資${fmtAbs(czev.cost)}`;
+    } else {
+      revEl.textContent = '天井超過';
+      revEl.className = 'ev-card-value neu';
+      $('res-reset-sub').textContent = `CZ天井${m.czCeiling}Gは超過済み`;
+    }
+
+    // リセット後CZ天井を情報行に表示
+    if (m.resetCeiling) {
+      rowCzReset.style.display = 'flex';
+      if (curG < m.resetCeiling) {
+        const rrev = calcEV(curG, m.resetCeiling, m.czAvgCoins, m.coinHold, rate);
+        $('res-cz-reset').textContent = fmtYen(rrev.ev);
+        $('res-cz-reset').className = 'info-value ' + evClass(rrev.ev);
+      } else {
+        $('res-cz-reset').textContent = '超過済み';
+        $('res-cz-reset').className = 'info-value neu';
+      }
+    } else {
+      rowCzReset.style.display = 'none';
+    }
   } else {
-    revEl.textContent = '未設定';
-    revEl.className = 'ev-card-value neu';
-    $('res-reset-sub').textContent = 'リセット後天井G数を登録してください';
+    // 非CZ機：リセット天井EV
+    resetLabel.textContent = 'リセット天井期待値';
+    rowCzReset.style.display = 'none';
+
+    const rev = m.resetCeiling
+      ? calcEV(curG, m.resetCeiling, m.ceilingCoins, m.coinHold, rate)
+      : null;
+    if (rev) {
+      revEl.textContent = fmtYen(rev.ev);
+      revEl.className = 'ev-card-value ' + evClass(rev.ev);
+      $('res-reset-sub').textContent = `残り${rev.rem}G→${m.resetCeiling}G天井　投資${fmtAbs(rev.cost)}`;
+    } else {
+      revEl.textContent = '未設定';
+      revEl.className = 'ev-card-value neu';
+      $('res-reset-sub').textContent = 'リセット後天井G数を登録してください';
+    }
   }
 
-  // 情報カード
+  // 狙い目（AT天井基準）
+  const pf = profitableG(m.ceiling, m.ceilingCoins, m.coinHold, rate);
   const pfEl = $('res-profitable');
   if (pf !== null) {
     pfEl.textContent = pf.toLocaleString() + 'G〜';
@@ -333,7 +390,10 @@ function renderMachineList() {
     return;
   }
 
-  el.innerHTML = list.map(m => `
+  el.innerHTML = list.map(m => {
+    const czLine = m.hasCZ && m.czCeiling
+      ? `CZ天井: ${m.czCeiling}G　CZ時平均: ${m.czAvgCoins ?? '?'}枚<br>` : '';
+    return `
     <div class="machine-item">
       <div class="machine-item-header">
         <span class="machine-item-name">${m.name}</span>
@@ -342,11 +402,12 @@ function renderMachineList() {
       <div class="machine-item-meta">
         ${m.maker || 'メーカー不明'}　／　機械割 ${m.rateMin ?? '?'}%〜${m.rateMax ?? '?'}%<br>
         天井: ${m.ceiling ?? '?'}G　リセット後: ${m.resetCeiling ? m.resetCeiling + 'G' : '未設定'}<br>
-        コイン持ち: ${m.coinHold ?? '?'}G/50枚　天井時平均: ${m.ceilingCoins ?? '?'}枚
+        ${czLine}コイン持ち: ${m.coinHold ?? '?'}G/50枚　天井時平均: ${m.ceilingCoins ?? '?'}枚
         ${m.notes ? `<br>📝 ${m.notes}` : ''}
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function onDelete(id, name) {
@@ -377,6 +438,8 @@ $('form-add').addEventListener('submit', e => {
 
   if (!m.name) { showStatus('add-status', '機種名は必須です', 'err'); return; }
 
+  if (m.czCeiling && m.czCeiling > 0) m.hasCZ = true;
+
   saveMachine(m);
   populateSelect();
   showStatus('add-status', `「${m.name}」を登録しました`, 'ok');
@@ -394,4 +457,5 @@ function showStatus(id, msg, type) {
 //  起動
 // ════════════════════════════════════════════
 
+initBuiltins();
 populateSelect();

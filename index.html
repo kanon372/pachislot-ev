@@ -59,7 +59,7 @@
           <div class="ev-card-sub" id="res-ceiling-sub"></div>
         </div>
         <div class="ev-card">
-          <div class="ev-card-label">リセット天井期待値</div>
+          <div class="ev-card-label" id="res-reset-label">リセット天井期待値</div>
           <div class="ev-card-value" id="res-reset">¥0</div>
           <div class="ev-card-sub" id="res-reset-sub"></div>
         </div>
@@ -69,6 +69,10 @@
         <div class="info-row">
           <span class="info-label">狙い目開始G数</span>
           <span id="res-profitable" class="info-value">--</span>
+        </div>
+        <div class="info-row" id="row-cz-reset" style="display:none">
+          <span class="info-label">リセット後CZ天井期待値</span>
+          <span id="res-cz-reset" class="info-value">--</span>
         </div>
         <div class="info-row">
           <span class="info-label">1Gあたりコスト</span>
@@ -124,12 +128,22 @@
         </div>
         <div class="field-row">
           <div class="field">
-            <label class="field-label">天井G数</label>
+            <label class="field-label">天井G数（AT天井）</label>
             <input type="number" name="ceiling" placeholder="1268" inputmode="numeric">
           </div>
           <div class="field">
             <label class="field-label">リセット後天井G数</label>
             <input type="number" name="resetCeiling" placeholder="800" inputmode="numeric">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label">CZ天井G数（CZ機のみ）</label>
+            <input type="number" name="czCeiling" placeholder="600" inputmode="numeric">
+          </div>
+          <div class="field">
+            <label class="field-label">CZ時平均獲得枚数</label>
+            <input type="number" name="czAvgCoins" placeholder="320" step="0.1" inputmode="decimal">
           </div>
         </div>
         <div class="field-row">
