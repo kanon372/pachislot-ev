@@ -14,7 +14,7 @@ const SEED = [
     rateMin: 98.0, rateMax: 113.0,
     ceiling: 1268, resetCeiling: 800,
     coinHold: 34.7, atGain: 4.1,
-    atAvgCoins: 700, ceilingCoins: 833.6,
+    atAvgCoins: 700, ceilingCoins: 933,
     notes: '天井到達時は継続率84%以上優遇。設定変更後800G天井。',
   }
 ];
@@ -26,10 +26,10 @@ const GHOUL = {
   rateMin: 97.5, rateMax: 114.9,
   ceiling: 1200, resetCeiling: 200,
   coinHold: 31.1, atGain: 4.0,
-  atAvgCoins: 415, ceilingCoins: 800,
+  atAvgCoins: 415, ceilingCoins: 900,
   hasCZ: true,
   czCeiling: 600,
-  czAvgCoins: 322,
+  czAvgCoins: 329,
   notes: 'CZ天井600G（CZ突入→AT期待度約77%）。AT天井1200G（AT確定）。リセット後200GでCZ天井。',
 };
 
@@ -57,35 +57,53 @@ function deleteMachine(id) {
   setMachines(getMachines().filter(m => m.id !== id));
 }
 
-// 組み込み機種を必要に応じて追加（既存データを消さない）
+// 組み込み機種を追加・更新（ユーザー登録台は保持）
 function initBuiltins() {
-  const list = getMachines();
-  const ids = new Set(list.map(m => m.id));
-  const toAdd = [GHOUL].filter(b => !ids.has(b.id));
-  if (toAdd.length > 0) setMachines([...list, ...toAdd]);
+  const BUILTINS = [
+    { ...SEED[0] },
+    { ...GHOUL },
+  ];
+  let list = getMachines();
+  let changed = false;
+  for (const bm of BUILTINS) {
+    const idx = list.findIndex(m => m.id === bm.id);
+    if (idx === -1) {
+      list.push(bm);
+      changed = true;
+    } else {
+      // ceilingCoins/czAvgCoinsなどのスペック値を最新に上書き
+      const updated = { ...bm, ...{ id: list[idx].id } };
+      if (JSON.stringify(list[idx]) !== JSON.stringify(updated)) {
+        list[idx] = updated;
+        changed = true;
+      }
+    }
+  }
+  if (changed) setMachines(list);
 }
 
 // ════════════════════════════════════════════
 //  計算エンジン
 // ════════════════════════════════════════════
 
-// 1枚あたりの円価値 (交換率: 枚/50円)
+// 1枚あたりの円価値（交換率ベース、払い出しのみに使用）
 const coinYen = rate => 50 / rate;
 
 // 1Gあたりのコスト（円）
-const cpg = (hold, rate) => (50 / hold) * coinYen(rate);
+// コイン貸し出し料は交換率に関わらず常に5枚/50円=10円/コイン固定
+const cpg = hold => (50 / hold) * 10;
 
 // 天井期待値
 function calcEV(curG, ceilG, coins, hold, rate) {
   const rem = Math.max(0, ceilG - curG);
-  const cost = rem * cpg(hold, rate);
-  const pay  = coins * coinYen(rate);
+  const cost = rem * cpg(hold);          // コストは貸し出し料ベース
+  const pay  = coins * coinYen(rate);   // 払い出しは交換率ベース
   return {
     ev:   Math.round(pay - cost),
     cost: Math.round(cost),
     pay:  Math.round(pay),
     rem,
-    cpg:  Math.round(cpg(hold, rate) * 10) / 10,
+    cpg:  Math.round(cpg(hold) * 10) / 10,
   };
 }
 
@@ -100,9 +118,9 @@ function evSeries(ceilG, coins, hold, rate) {
 
 // 狙い目G数（EVがプラスになる最初のG数）
 function profitableG(ceilG, coins, hold, rate) {
-  const c = cpg(hold, rate);
+  const c   = cpg(hold);
   const pay = coins * coinYen(rate);
-  const be = Math.ceil(ceilG - pay / c);
+  const be  = Math.ceil(ceilG - pay / c);
   return be >= 0 && be < ceilG ? be : null;
 }
 
