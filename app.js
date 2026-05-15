@@ -33,6 +33,18 @@ const GHOUL = {
   notes: 'CZ天井600G（CZ突入→AT期待度約77%）。AT天井1200G（AT確定）。リセット後200GでCZ天井。',
 };
 
+const HOKUTO2 = {
+  id: 3,
+  name: 'スマスロ北斗転生の章2',
+  maker: 'サミー',
+  rateMin: 97.6, rateMax: 114.9,
+  ceiling: 1536, resetCeiling: 1280,
+  coinHold: 31.5, atGain: 4.0,
+  atAvgCoins: 800, ceilingCoins: 1220,
+  resetCeilingCoins: 1164,
+  notes: '天井1536あべし。設定変更後1280あべし天井（リセット狙い目625あべし〜）。ゾーン193〜256あべし。',
+};
+
 function getMachines() {
   try {
     const d = JSON.parse(localStorage.getItem(STORAGE_KEY));
@@ -62,6 +74,7 @@ function initBuiltins() {
   const BUILTINS = [
     { ...SEED[0] },
     { ...GHOUL },
+    { ...HOKUTO2 },
   ];
   let list = getMachines();
   let changed = false;
@@ -262,8 +275,9 @@ $('btn-calc').addEventListener('click', () => {
     resetLabel.textContent = 'リセット天井期待値';
     rowCzReset.style.display = 'none';
 
+    const resetCoins = m.resetCeilingCoins ?? m.ceilingCoins;
     const rev = m.resetCeiling
-      ? calcEV(curG, m.resetCeiling, m.ceilingCoins, m.coinHold, rate)
+      ? calcEV(curG, m.resetCeiling, resetCoins, m.coinHold, rate)
       : null;
     if (rev) {
       revEl.textContent = fmtYen(rev.ev);
