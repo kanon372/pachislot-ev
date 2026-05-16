@@ -48,6 +48,54 @@ const HOKUTO2 = {
   notes: '天井1536あべし。設定変更後1280あべし天井（リセット狙い目625あべし〜）。ゾーン193〜256あべし。シャッター確認でモードB以上確定（896G天井）。',
 };
 
+const TAKT_AT = {
+  id: 4,
+  name: 'Lタクトオーパス デスティニー（AT天井狙い）',
+  maker: 'アムテックス/平和',
+  rateMin: 97.6, rateMax: 113.5,
+  ceiling: 999, resetCeiling: 699,
+  coinHold: 34.9, atGain: 2.6,
+  atAvgCoins: 500, ceilingCoins: 550,
+  resetCeilingCoins: 550,
+  notes: 'AT天井999G（5.6枚657G〜/等価615G〜）。設定変更後699G天井（350G〜）。上位ATオルフェループ突入時約3000枚。※2026年5月新台・暫定値。',
+};
+
+const TAKT_RESET = {
+  id: 5,
+  name: 'Lタクトオーパス デスティニー（リセット狙い）',
+  maker: 'アムテックス/平和',
+  rateMin: 97.6, rateMax: 113.5,
+  ceiling: 699, resetCeiling: 699,
+  coinHold: 34.9, atGain: 2.6,
+  atAvgCoins: 500, ceilingCoins: 550,
+  notes: 'リセット後専用エントリ。有利区間ランプ消灯台がターゲット。699G天井（5.6枚約350G〜がプラス）。※2026年5月新台・暫定値。',
+};
+
+const TAKT_CZ = {
+  id: 6,
+  name: 'Lタクトオーパス デスティニー（CZ天井狙い）',
+  maker: 'アムテックス/平和',
+  rateMin: 97.6, rateMax: 113.5,
+  ceiling: 999, resetCeiling: 300,
+  coinHold: 34.9, atGain: 2.6,
+  atAvgCoins: 500, ceilingCoins: 550,
+  hasCZ: true,
+  czCeiling: 500,
+  czAvgCoins: 550,
+  notes: 'CZ天井500G（5.6枚157G〜がプラス）。有利区間切れリセット後は300GでCZ天井（常時プラス）。※2026年5月新台・暫定値。',
+};
+
+const TAKT_ZONE = {
+  id: 7,
+  name: 'Lタクトオーパス デスティニー（ゾーン狙い）',
+  maker: 'アムテックス/平和',
+  rateMin: 97.6, rateMax: 113.5,
+  ceiling: 300, resetCeiling: 300,
+  coinHold: 34.9, atGain: 2.6,
+  atAvgCoins: 150, ceilingCoins: 150,
+  notes: '280G〜300Gゾーン狙い（短期決戦）。ゾーン命中率約30%想定の概算値。300G通過後は即ヤメ推奨。精度が低いため参考値として使用。※2026年5月新台・暫定値。',
+};
+
 function getMachines() {
   try {
     const d = JSON.parse(localStorage.getItem(STORAGE_KEY));
@@ -78,6 +126,10 @@ function initBuiltins() {
     { ...SEED[0] },
     { ...GHOUL },
     { ...HOKUTO2 },
+    { ...TAKT_AT },
+    { ...TAKT_RESET },
+    { ...TAKT_CZ },
+    { ...TAKT_ZONE },
   ];
   let list = getMachines();
   let changed = false;
