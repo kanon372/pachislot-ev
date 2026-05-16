@@ -9,7 +9,7 @@ const STORAGE_KEY = 'pachislot_machines_v2';
 const SEED = [
   {
     id: 1,
-    name: 'スマスロ北斗の拳',
+    name: 'スマスロ北斗の拳（AT天井狙い）',
     maker: 'サミー',
     rateMin: 98.0, rateMax: 113.0,
     ceiling: 1268, resetCeiling: 800,
@@ -21,7 +21,7 @@ const SEED = [
 
 const GHOUL = {
   id: 2,
-  name: 'L東京喰種（東京グール）',
+  name: 'L東京喰種（東京グール）（CZ天井狙い）',
   maker: 'Spiky',
   rateMin: 97.5, rateMax: 114.9,
   ceiling: 1200, resetCeiling: 200,
@@ -35,7 +35,7 @@ const GHOUL = {
 
 const HOKUTO2 = {
   id: 3,
-  name: 'スマスロ北斗転生の章2',
+  name: 'スマスロ北斗転生の章2（AT天井狙い）',
   maker: 'サミー',
   rateMin: 97.6, rateMax: 114.9,
   ceiling: 1536, resetCeiling: 1280,
@@ -46,6 +46,61 @@ const HOKUTO2 = {
   shutterCoins: 1700,
   shutterLabel: 'シャッター確認済み（モードB以上・896G天井）',
   notes: '天井1536あべし。設定変更後1280あべし天井（リセット狙い目625あべし〜）。ゾーン193〜256あべし。シャッター確認でモードB以上確定（896G天井）。',
+};
+
+const SEED_RESET = {
+  id: 8,
+  name: 'スマスロ北斗の拳（リセット狙い）',
+  maker: 'サミー',
+  rateMin: 98.0, rateMax: 113.0,
+  ceiling: 800, resetCeiling: 800,
+  coinHold: 34.7, atGain: 4.1,
+  atAvgCoins: 700, ceilingCoins: 933,
+  notes: '設定変更後800G天井専用。222G〜（5.6枚）がプラス。有利区間ランプ消灯台がターゲット。',
+};
+
+const GHOUL_AMO = {
+  id: 9,
+  name: 'L東京喰種（東京グール）（朝一狙い）',
+  maker: 'Spiky',
+  rateMin: 97.5, rateMax: 114.9,
+  ceiling: 200, resetCeiling: 200,
+  coinHold: 31.1, atGain: 4.0,
+  atAvgCoins: 329, ceilingCoins: 329,
+  notes: '朝一/リセット後専用。200GでCZ天井確定→AT期待度77%。等価なら0G〜プラス。5.6枚は18G〜プラス。',
+};
+
+const GHOUL_AT = {
+  id: 10,
+  name: 'L東京喰種（東京グール）（AT天井狙い）',
+  maker: 'Spiky',
+  rateMin: 97.5, rateMax: 114.9,
+  ceiling: 1200, resetCeiling: 200,
+  coinHold: 31.1, atGain: 4.0,
+  atAvgCoins: 415, ceilingCoins: 900,
+  notes: 'AT天井1200G確定（AT確定）。701G〜（5.6枚）がプラス。リセット後は200GでCZ天井。',
+};
+
+const HOKUTO2_RESET = {
+  id: 11,
+  name: 'スマスロ北斗転生の章2（リセット狙い）',
+  maker: 'サミー',
+  rateMin: 97.6, rateMax: 114.9,
+  ceiling: 1280, resetCeiling: 1280,
+  coinHold: 31.5, atGain: 4.0,
+  atAvgCoins: 800, ceilingCoins: 1164,
+  notes: '設定変更後1280あべし天井専用。625あべし〜（5.6枚）がプラス。有利区間ランプ消灯台がターゲット。',
+};
+
+const HOKUTO2_SHUTTER = {
+  id: 12,
+  name: 'スマスロ北斗転生の章2（シャッター狙い）',
+  maker: 'サミー',
+  rateMin: 97.6, rateMax: 114.9,
+  ceiling: 896, resetCeiling: 896,
+  coinHold: 31.5, atGain: 4.0,
+  atAvgCoins: 800, ceilingCoins: 1700,
+  notes: 'シャッター確認済み（モードB以上）896あべし天井確定。常時プラス期待値。',
 };
 
 const TAKT_AT = {
@@ -126,6 +181,11 @@ function initBuiltins() {
     { ...SEED[0] },
     { ...GHOUL },
     { ...HOKUTO2 },
+    { ...SEED_RESET },
+    { ...GHOUL_AMO },
+    { ...GHOUL_AT },
+    { ...HOKUTO2_RESET },
+    { ...HOKUTO2_SHUTTER },
     { ...TAKT_AT },
     { ...TAKT_RESET },
     { ...TAKT_CZ },
