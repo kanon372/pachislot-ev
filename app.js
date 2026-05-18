@@ -1,213 +1,47 @@
 'use strict';
 
 // ════════════════════════════════════════════
-//  データ管理（localStorage）
+//  管理者モード（URLに ?admin が含まれる場合）
 // ════════════════════════════════════════════
 
-const STORAGE_KEY = 'pachislot_machines_v2';
+const isAdmin = location.search.includes('admin');
 
-const SEED = [
-  {
-    id: 1,
-    name: 'スマスロ北斗の拳（AT天井狙い）',
-    maker: 'サミー',
-    rateMin: 98.0, rateMax: 113.0,
-    ceiling: 1268, resetCeiling: 800,
-    coinHold: 34.7, atGain: 4.1,
-    atAvgCoins: 700, ceilingCoins: 933,
-    notes: '天井到達時は継続率84%以上優遇。設定変更後800G天井。',
-  }
-];
+// ════════════════════════════════════════════
+//  データ管理
+// ════════════════════════════════════════════
 
-const GHOUL = {
-  id: 2,
-  name: 'L東京喰種（東京グール）（CZ天井狙い）',
-  maker: 'Spiky',
-  rateMin: 97.5, rateMax: 114.9,
-  ceiling: 1200, resetCeiling: 200,
-  coinHold: 31.1, atGain: 4.0,
-  atAvgCoins: 415, ceilingCoins: 900,
-  hasCZ: true,
-  czCeiling: 600,
-  czAvgCoins: 329,
-  notes: 'CZ天井600G（CZ突入→AT期待度約77%）。AT天井1200G（AT確定）。リセット後200GでCZ天井。',
-};
+const CUSTOM_KEY = 'pachislot_custom_v1';
+let allMachines = []; // 共有(JSON) + カスタム(localStorage)
 
-const HOKUTO2 = {
-  id: 3,
-  name: 'スマスロ北斗転生の章2（AT天井狙い）',
-  maker: 'サミー',
-  rateMin: 97.6, rateMax: 114.9,
-  ceiling: 1536, resetCeiling: 1280,
-  coinHold: 31.5, atGain: 4.0,
-  atAvgCoins: 800, ceilingCoins: 1220,
-  resetCeilingCoins: 1164,
-  shutterCeiling: 896,
-  shutterCoins: 1700,
-  shutterLabel: 'シャッター確認済み（モードB以上・896G天井）',
-  notes: '天井1536あべし。設定変更後1280あべし天井（リセット狙い目625あべし〜）。ゾーン193〜256あべし。シャッター確認でモードB以上確定（896G天井）。',
-};
-
-const SEED_RESET = {
-  id: 8,
-  name: 'スマスロ北斗の拳（リセット狙い）',
-  maker: 'サミー',
-  rateMin: 98.0, rateMax: 113.0,
-  ceiling: 800, resetCeiling: 800,
-  coinHold: 34.7, atGain: 4.1,
-  atAvgCoins: 700, ceilingCoins: 933,
-  notes: '設定変更後800G天井専用。222G〜（5.6枚）がプラス。有利区間ランプ消灯台がターゲット。',
-};
-
-const GHOUL_AMO = {
-  id: 9,
-  name: 'L東京喰種（東京グール）（朝一狙い）',
-  maker: 'Spiky',
-  rateMin: 97.5, rateMax: 114.9,
-  ceiling: 200, resetCeiling: 200,
-  coinHold: 31.1, atGain: 4.0,
-  atAvgCoins: 329, ceilingCoins: 329,
-  notes: '朝一/リセット後専用。200GでCZ天井確定→AT期待度77%。等価なら0G〜プラス。5.6枚は18G〜プラス。',
-};
-
-const GHOUL_AT = {
-  id: 10,
-  name: 'L東京喰種（東京グール）（AT天井狙い）',
-  maker: 'Spiky',
-  rateMin: 97.5, rateMax: 114.9,
-  ceiling: 1200, resetCeiling: 200,
-  coinHold: 31.1, atGain: 4.0,
-  atAvgCoins: 415, ceilingCoins: 900,
-  notes: 'AT天井1200G確定（AT確定）。701G〜（5.6枚）がプラス。リセット後は200GでCZ天井。',
-};
-
-const HOKUTO2_RESET = {
-  id: 11,
-  name: 'スマスロ北斗転生の章2（リセット狙い）',
-  maker: 'サミー',
-  rateMin: 97.6, rateMax: 114.9,
-  ceiling: 1280, resetCeiling: 1280,
-  coinHold: 31.5, atGain: 4.0,
-  atAvgCoins: 800, ceilingCoins: 1164,
-  notes: '設定変更後1280あべし天井専用。625あべし〜（5.6枚）がプラス。有利区間ランプ消灯台がターゲット。',
-};
-
-const HOKUTO2_SHUTTER = {
-  id: 12,
-  name: 'スマスロ北斗転生の章2（シャッター狙い）',
-  maker: 'サミー',
-  rateMin: 97.6, rateMax: 114.9,
-  ceiling: 896, resetCeiling: 896,
-  coinHold: 31.5, atGain: 4.0,
-  atAvgCoins: 800, ceilingCoins: 1700,
-  notes: 'シャッター確認済み（モードB以上）896あべし天井確定。常時プラス期待値。',
-};
-
-const TAKT_AT = {
-  id: 4,
-  name: 'Lタクトオーパス デスティニー（AT天井狙い）',
-  maker: 'アムテックス/平和',
-  rateMin: 97.6, rateMax: 113.5,
-  ceiling: 999, resetCeiling: 699,
-  coinHold: 34.9, atGain: 2.6,
-  atAvgCoins: 500, ceilingCoins: 550,
-  resetCeilingCoins: 550,
-  notes: 'AT天井999G（5.6枚657G〜/等価615G〜）。設定変更後699G天井（350G〜）。上位ATオルフェループ突入時約3000枚。※2026年5月新台・暫定値。',
-};
-
-const TAKT_RESET = {
-  id: 5,
-  name: 'Lタクトオーパス デスティニー（リセット狙い）',
-  maker: 'アムテックス/平和',
-  rateMin: 97.6, rateMax: 113.5,
-  ceiling: 699, resetCeiling: 699,
-  coinHold: 34.9, atGain: 2.6,
-  atAvgCoins: 500, ceilingCoins: 550,
-  notes: 'リセット後専用エントリ。有利区間ランプ消灯台がターゲット。699G天井（5.6枚約350G〜がプラス）。※2026年5月新台・暫定値。',
-};
-
-const TAKT_CZ = {
-  id: 6,
-  name: 'Lタクトオーパス デスティニー（CZ天井狙い）',
-  maker: 'アムテックス/平和',
-  rateMin: 97.6, rateMax: 113.5,
-  ceiling: 999, resetCeiling: 300,
-  coinHold: 34.9, atGain: 2.6,
-  atAvgCoins: 500, ceilingCoins: 550,
-  hasCZ: true,
-  czCeiling: 500,
-  czAvgCoins: 550,
-  notes: 'CZ天井500G（5.6枚157G〜がプラス）。有利区間切れリセット後は300GでCZ天井（常時プラス）。※2026年5月新台・暫定値。',
-};
-
-const TAKT_ZONE = {
-  id: 7,
-  name: 'Lタクトオーパス デスティニー（ゾーン狙い）',
-  maker: 'アムテックス/平和',
-  rateMin: 97.6, rateMax: 113.5,
-  ceiling: 300, resetCeiling: 300,
-  coinHold: 34.9, atGain: 2.6,
-  atAvgCoins: 150, ceilingCoins: 150,
-  notes: '280G〜300Gゾーン狙い（短期決戦）。ゾーン命中率約30%想定の概算値。300G通過後は即ヤメ推奨。精度が低いため参考値として使用。※2026年5月新台・暫定値。',
-};
-
-function getMachines() {
+async function loadMachines() {
+  let shared = [];
   try {
-    const d = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (Array.isArray(d) && d.length > 0) return d;
+    const res = await fetch('./machines.json');
+    if (res.ok) shared = await res.json();
   } catch {}
-  setMachines(SEED);
-  return SEED;
+  allMachines = [...shared, ...getCustomMachines()];
 }
 
-function setMachines(list) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+function getCustomMachines() {
+  try {
+    const d = JSON.parse(localStorage.getItem(CUSTOM_KEY));
+    return Array.isArray(d) ? d : [];
+  } catch { return []; }
 }
 
-function saveMachine(m) {
-  const list = getMachines();
-  m.id = Date.now();
+function addCustomMachine(m) {
+  const list = getCustomMachines();
+  m.id = 'custom_' + Date.now();
+  m.isCustom = true;
   list.push(m);
-  setMachines(list);
+  localStorage.setItem(CUSTOM_KEY, JSON.stringify(list));
+  allMachines = [...allMachines.filter(x => !x.isCustom), ...list];
 }
 
-function deleteMachine(id) {
-  setMachines(getMachines().filter(m => m.id !== id));
-}
-
-// 組み込み機種を追加・更新（ユーザー登録台は保持）
-function initBuiltins() {
-  const BUILTINS = [
-    { ...SEED[0] },
-    { ...GHOUL },
-    { ...HOKUTO2 },
-    { ...SEED_RESET },
-    { ...GHOUL_AMO },
-    { ...GHOUL_AT },
-    { ...HOKUTO2_RESET },
-    { ...HOKUTO2_SHUTTER },
-    { ...TAKT_AT },
-    { ...TAKT_RESET },
-    { ...TAKT_CZ },
-    { ...TAKT_ZONE },
-  ];
-  let list = getMachines();
-  let changed = false;
-  for (const bm of BUILTINS) {
-    const idx = list.findIndex(m => m.id === bm.id);
-    if (idx === -1) {
-      list.push(bm);
-      changed = true;
-    } else {
-      // ceilingCoins/czAvgCoinsなどのスペック値を最新に上書き
-      const updated = { ...bm, ...{ id: list[idx].id } };
-      if (JSON.stringify(list[idx]) !== JSON.stringify(updated)) {
-        list[idx] = updated;
-        changed = true;
-      }
-    }
-  }
-  if (changed) setMachines(list);
+function deleteCustomMachine(id) {
+  const list = getCustomMachines().filter(m => String(m.id) !== String(id));
+  localStorage.setItem(CUSTOM_KEY, JSON.stringify(list));
+  allMachines = allMachines.filter(m => String(m.id) !== String(id));
 }
 
 // ════════════════════════════════════════════
@@ -224,8 +58,8 @@ const cpg = hold => (50 / hold) * 10;
 // 天井期待値
 function calcEV(curG, ceilG, coins, hold, rate) {
   const rem = Math.max(0, ceilG - curG);
-  const cost = rem * cpg(hold);          // コストは貸し出し料ベース
-  const pay  = coins * coinYen(rate);   // 払い出しは交換率ベース
+  const cost = rem * cpg(hold);
+  const pay  = coins * coinYen(rate);
   return {
     ev:   Math.round(pay - cost),
     cost: Math.round(cost),
@@ -250,8 +84,8 @@ function profitableG(ceilG, coins, hold, rate) {
   const c   = cpg(hold);
   const pay = coins * coinYen(rate);
   const be  = Math.ceil(ceilG - pay / c);
-  if (be < 0)     return 0;    // 常時プラス
-  if (be >= ceilG) return null; // 常時マイナス
+  if (be < 0)      return 0;
+  if (be >= ceilG) return null;
   return be;
 }
 
@@ -288,9 +122,9 @@ function populateSelect() {
   const sel = $('sel-machine');
   const prev = sel.value;
   sel.innerHTML = '<option value="">-- 選択してください --</option>';
-  getMachines().forEach(m => {
+  allMachines.forEach(m => {
     const opt = document.createElement('option');
-    opt.value = m.id;
+    opt.value = String(m.id);
     opt.textContent = m.name + (m.maker ? `　[${m.maker}]` : '');
     sel.appendChild(opt);
   });
@@ -298,8 +132,8 @@ function populateSelect() {
 }
 
 $('sel-machine').addEventListener('change', e => {
-  const id = Number(e.target.value);
-  currentMachine = getMachines().find(m => m.id === id) || null;
+  const id = e.target.value;
+  currentMachine = allMachines.find(m => String(m.id) === id) || null;
 
   const summary = $('machine-summary');
   if (!currentMachine) {
@@ -391,7 +225,6 @@ $('btn-calc').addEventListener('click', () => {
       $('res-reset-sub').textContent = `CZ天井${m.czCeiling}Gは超過済み`;
     }
 
-    // リセット後CZ天井を情報行に表示
     if (m.resetCeiling) {
       rowCzReset.style.display = 'flex';
       if (curG < m.resetCeiling) {
@@ -425,7 +258,7 @@ $('btn-calc').addEventListener('click', () => {
     }
   }
 
-  // 狙い目（シャッターモード時はシャッター天井基準）
+  // 狙い目
   const pf = profitableG(effCeiling, effCoins, m.coinHold, rate);
   const pfEl = $('res-profitable');
   if (pf === 0) {
@@ -443,7 +276,6 @@ $('btn-calc').addEventListener('click', () => {
   $('res-cost').textContent = fmtAbs(cev.cost);
   $('res-pay').textContent  = fmtAbs(cev.pay);
 
-  // グラフ
   renderChart(evSeries(effCeiling, effCoins, m.coinHold, rate), curG, pf);
 
   $('results').classList.remove('hidden');
@@ -552,22 +384,24 @@ function renderChart(series, curG, pf) {
 // ════════════════════════════════════════════
 
 function renderMachineList() {
-  const list = getMachines();
   const el = $('machine-list');
 
-  if (list.length === 0) {
-    el.innerHTML = '<div class="empty">登録済みの台がありません<br>「台を追加」タブから登録してください</div>';
+  if (allMachines.length === 0) {
+    el.innerHTML = '<div class="empty">台データを読み込んでいます...</div>';
     return;
   }
 
-  el.innerHTML = list.map(m => {
+  el.innerHTML = allMachines.map(m => {
     const czLine = m.hasCZ && m.czCeiling
       ? `CZ天井: ${m.czCeiling}G　CZ時平均: ${m.czAvgCoins ?? '?'}枚<br>` : '';
+    const deleteBtn = (isAdmin && m.isCustom)
+      ? `<button class="btn-danger" onclick="onDelete('${m.id}', '${m.name.replace(/'/g, "\\'")}')">削除</button>`
+      : '';
     return `
     <div class="machine-item">
       <div class="machine-item-header">
         <span class="machine-item-name">${m.name}</span>
-        <button class="btn-danger" onclick="onDelete(${m.id}, '${m.name.replace(/'/g, "\\'")}')">削除</button>
+        ${deleteBtn}
       </div>
       <div class="machine-item-meta">
         ${m.maker || 'メーカー不明'}　／　機械割 ${m.rateMin ?? '?'}%〜${m.rateMax ?? '?'}%<br>
@@ -582,10 +416,10 @@ function renderMachineList() {
 
 function onDelete(id, name) {
   if (!confirm(`「${name}」を削除しますか？`)) return;
-  deleteMachine(id);
+  deleteCustomMachine(id);
   renderMachineList();
   populateSelect();
-  if (currentMachine?.id === id) {
+  if (String(currentMachine?.id) === String(id)) {
     currentMachine = null;
     $('machine-summary').classList.add('hidden');
     $('results').classList.add('hidden');
@@ -595,7 +429,7 @@ function onDelete(id, name) {
 }
 
 // ════════════════════════════════════════════
-//  台を追加
+//  台を追加（管理者のみ）
 // ════════════════════════════════════════════
 
 $('form-add').addEventListener('submit', e => {
@@ -610,9 +444,9 @@ $('form-add').addEventListener('submit', e => {
 
   if (m.czCeiling && m.czCeiling > 0) m.hasCZ = true;
 
-  saveMachine(m);
+  addCustomMachine(m);
   populateSelect();
-  showStatus('add-status', `「${m.name}」を登録しました`, 'ok');
+  showStatus('add-status', `「${m.name}」を登録しました（このブラウザのみ）`, 'ok');
   e.target.reset();
 });
 
@@ -627,5 +461,15 @@ function showStatus(id, msg, type) {
 //  起動
 // ════════════════════════════════════════════
 
-initBuiltins();
-populateSelect();
+async function init() {
+  // 管理者モード以外は「台を追加」タブを非表示
+  if (!isAdmin) {
+    const addTab = document.querySelector('[data-tab="add"]');
+    if (addTab) addTab.style.display = 'none';
+  }
+
+  await loadMachines();
+  populateSelect();
+}
+
+init();
