@@ -16,6 +16,7 @@
 <nav class="tabs">
   <button class="tab active" data-tab="calc">計算</button>
   <button class="tab" data-tab="db">台一覧</button>
+  <button class="tab" data-tab="log">実践記録</button>
   <button class="tab" data-tab="add">台を追加</button>
 </nav>
 
@@ -107,6 +108,72 @@
   <!-- ══ 台一覧タブ ══ -->
   <section id="tab-db" class="tab-content">
     <div id="machine-list"></div>
+  </section>
+
+  <!-- ══ 実践記録タブ（管理者用） ══ -->
+  <section id="tab-log" class="tab-content">
+
+    <div id="log-dashboard"></div>
+
+    <div class="card">
+      <h2 class="card-title">実践を記録する</h2>
+      <form id="form-log">
+        <div class="field">
+          <label class="field-label">台 <span class="req">*</span></label>
+          <select id="log-machine" required>
+            <option value="">-- 選択してください --</option>
+          </select>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label">日付</label>
+            <input type="date" id="log-date">
+          </div>
+          <div class="field">
+            <label class="field-label">交換率</label>
+            <select id="log-rate">
+              <option value="5">等価 (5枚)</option>
+              <option value="5.6" selected>5.6枚</option>
+              <option value="6">6枚</option>
+              <option value="7">7枚</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label">開始G数</label>
+            <input type="number" id="log-start-g" placeholder="0" min="0" inputmode="numeric">
+          </div>
+          <div class="field">
+            <label class="field-label">投資額（円）</label>
+            <input type="number" id="log-investment" placeholder="3000" min="0" inputmode="numeric">
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label">回収額（円）</label>
+          <input type="number" id="log-payout" placeholder="0" min="0" inputmode="numeric">
+        </div>
+        <div id="log-preview" class="hidden info-card" style="margin-bottom:10px;padding:10px 12px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
+          <div class="info-row">
+            <span class="info-label">今回の損益</span>
+            <span id="log-prev-ev" class="info-value">--</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">理論EV（参考）</span>
+            <span id="log-prev-theory" class="info-value">--</span>
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label">メモ</label>
+          <input type="text" id="log-note" placeholder="特記事項など">
+        </div>
+        <button type="submit" class="btn-primary">記録する</button>
+        <div id="log-status" class="status-msg"></div>
+      </form>
+    </div>
+
+    <div id="log-list"></div>
+
   </section>
 
   <!-- ══ 台を追加タブ ══ -->
