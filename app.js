@@ -142,6 +142,8 @@ document.querySelectorAll('.tab').forEach(tab => {
 // ════════════════════════════════════════════
 
 let currentMachine = null;
+let currentUnit = 'G';
+let chartUnit = 'G';
 
 function populateSelect() {
   const sel = $('sel-machine');
@@ -169,13 +171,16 @@ $('sel-machine').addEventListener('change', e => {
   }
 
   const m = currentMachine;
+  currentUnit = m.gameUnit || 'G';
+  const labelGames = $('label-games');
+  if (labelGames) labelGames.textContent = `現在の${currentUnit}数`;
   const czInfo = m.hasCZ && m.czCeiling
-    ? `　CZ天井: ${m.czCeiling}G（CZ突入）` : '';
+    ? `　CZ天井: ${m.czCeiling}${currentUnit}（CZ突入）` : '';
   summary.innerHTML = `
     <strong>${m.name}</strong>　${m.maker || ''}<br>
     機械割: ${m.rateMin}%〜${m.rateMax}%
-    天井: ${m.ceiling}G（リセット後 ${m.resetCeiling || '未設定'}G）${czInfo}<br>
-    コイン持ち: ${m.coinHold}G/50枚　AT純増: ${m.atGain}枚/G　天井時平均: ${m.ceilingCoins}枚
+    天井: ${m.ceiling}${currentUnit}（リセット後 ${m.resetCeiling || '未設定'}${currentUnit}）${czInfo}<br>
+    コイン持ち: ${m.coinHold}${currentUnit}/50枚　AT純増: ${m.atGain}枚/${currentUnit}　天井時平均: ${m.ceilingCoins}枚
     ${m.notes ? `<br>📝 ${m.notes}` : ''}
   `;
   summary.classList.remove('hidden');
@@ -184,7 +189,7 @@ $('sel-machine').addEventListener('change', e => {
   // シャッターオプション表示切り替え
   const shutterOpt = $('shutter-option');
   if (m.shutterCeiling) {
-    $('shutter-label').textContent = m.shutterLabel || `シャッター確認済み（${m.shutterCeiling}G天井）`;
+    $('shutter-label').textContent = m.shutterLabel || `シャッター確認済み（${m.shutterCeiling}${currentUnit}天井）`;
     shutterOpt.classList.remove('hidden');
   } else {
     shutterOpt.classList.add('hidden');
@@ -225,11 +230,11 @@ $('btn-calc').addEventListener('click', () => {
 
   // EVカード1：AT天井（またはシャッターモード）
   const cevEl = $('res-ceiling');
-  const cevLabel = useShutter ? `シャッター天井期待値（${m.shutterCeiling}G）` : '天井期待値';
+  const cevLabel = useShutter ? `シャッター天井期待値（${m.shutterCeiling}${currentUnit}）` : '天井期待値';
   $('res-ceiling').previousElementSibling.textContent = cevLabel;
   cevEl.textContent = fmtYen(cev.ev);
   cevEl.className = 'ev-card-value ' + evClass(cev.ev);
-  $('res-ceiling-sub').textContent = `残り${cev.rem}G　投資${fmtAbs(cev.cost)}→回収${fmtAbs(cev.pay)}`;
+  $('res-ceiling-sub').textContent = `残り${cev.rem}${currentUnit}　投資${fmtAbs(cev.cost)}→回収${fmtAbs(cev.pay)}`;
 
   // EVカード2：CZ天井 or リセット天井
   const resetLabel = $('res-reset-label');
@@ -243,11 +248,11 @@ $('btn-calc').addEventListener('click', () => {
       const czev = calcEV(curG, m.czCeiling, m.czAvgCoins, m.coinHold, rate);
       revEl.textContent = fmtYen(czev.ev);
       revEl.className = 'ev-card-value ' + evClass(czev.ev);
-      $('res-reset-sub').textContent = `残り${czev.rem}G→${m.czCeiling}G天井　投資${fmtAbs(czev.cost)}`;
+      $('res-reset-sub').textContent = `残り${czev.rem}${currentUnit}→${m.czCeiling}${currentUnit}天井　投資${fmtAbs(czev.cost)}`;
     } else {
       revEl.textContent = '天井超過';
       revEl.className = 'ev-card-value neu';
-      $('res-reset-sub').textContent = `CZ天井${m.czCeiling}Gは超過済み`;
+      $('res-reset-sub').textContent = `CZ天井${m.czCeiling}${currentUnit}は超過済み`;
     }
 
     if (m.resetCeiling) {
@@ -275,7 +280,7 @@ $('btn-calc').addEventListener('click', () => {
     if (rev) {
       revEl.textContent = fmtYen(rev.ev);
       revEl.className = 'ev-card-value ' + evClass(rev.ev);
-      $('res-reset-sub').textContent = `残り${rev.rem}G→${m.resetCeiling}G天井　投資${fmtAbs(rev.cost)}`;
+      $('res-reset-sub').textContent = `残り${rev.rem}${currentUnit}→${m.resetCeiling}${currentUnit}天井　投資${fmtAbs(rev.cost)}`;
     } else {
       revEl.textContent = '未設定';
       revEl.className = 'ev-card-value neu';
@@ -287,21 +292,21 @@ $('btn-calc').addEventListener('click', () => {
   const pf = profitableG(effCeiling, effCoins, m.coinHold, rate);
   const pfEl = $('res-profitable');
   if (pf === 0) {
-    pfEl.textContent = '0G〜（常時プラス）';
+    pfEl.textContent = '0' + currentUnit + '〜（常時プラス）';
     pfEl.className = 'info-value pos';
   } else if (pf !== null) {
-    pfEl.textContent = pf.toLocaleString() + 'G〜';
+    pfEl.textContent = pf.toLocaleString() + currentUnit + '〜';
     pfEl.className = 'info-value pos';
   } else {
     pfEl.textContent = 'なし（常時マイナス）';
     pfEl.className = 'info-value neg';
   }
 
-  $('res-cpg').textContent  = cev.cpg + '円/G';
+  $('res-cpg').textContent  = cev.cpg + '円/' + currentUnit;
   $('res-cost').textContent = fmtAbs(cev.cost);
   $('res-pay').textContent  = fmtAbs(cev.pay);
 
-  renderChart(evSeries(effCeiling, effCoins, m.coinHold, rate), curG, pf);
+  renderChart(evSeries(effCeiling, effCoins, m.coinHold, rate), curG, pf, currentUnit);
 
   $('results').classList.remove('hidden');
   setTimeout(() => $('results').scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
@@ -315,11 +320,12 @@ let chart = null;
 let chartCurG = 0;
 let chartPf = null;
 
-function renderChart(series, curG, pf) {
+function renderChart(series, curG, pf, unit = 'G') {
   chartCurG = curG;
   chartPf = pf;
+  chartUnit = unit;
 
-  const labels = series.map(p => p.g + 'G');
+  const labels = series.map(p => p.g + unit);
   const values = series.map(p => p.ev);
 
   if (chart) {
@@ -380,7 +386,7 @@ function renderChart(series, curG, pf) {
           ctx.strokeStyle = '#ec4899'; ctx.lineWidth = 2; ctx.setLineDash([]);
           ctx.beginPath(); ctx.moveTo(xp, ch.chartArea.top); ctx.lineTo(xp, ch.chartArea.bottom); ctx.stroke();
           ctx.fillStyle = '#ec4899'; ctx.font = 'bold 11px sans-serif';
-          ctx.fillText('現在 ' + chartCurG + 'G', xp + 4, ch.chartArea.top + 14);
+          ctx.fillText('現在 ' + chartCurG + chartUnit, xp + 4, ch.chartArea.top + 14);
           ctx.restore();
         },
       },
@@ -396,7 +402,7 @@ function renderChart(series, curG, pf) {
           ctx.strokeStyle = '#10b981'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 3]);
           ctx.beginPath(); ctx.moveTo(xp, ch.chartArea.top); ctx.lineTo(xp, ch.chartArea.bottom); ctx.stroke();
           ctx.fillStyle = '#10b981'; ctx.font = '11px sans-serif';
-          ctx.fillText('狙い目 ' + chartPf + 'G', xp + 4, ch.chartArea.top + 28);
+          ctx.fillText('狙い目 ' + chartPf + chartUnit, xp + 4, ch.chartArea.top + 28);
           ctx.restore();
         },
       },
@@ -417,8 +423,9 @@ function renderMachineList() {
   }
 
   el.innerHTML = allMachines.map(m => {
+    const u = m.gameUnit || 'G';
     const czLine = m.hasCZ && m.czCeiling
-      ? `CZ天井: ${m.czCeiling}G　CZ時平均: ${m.czAvgCoins ?? '?'}枚<br>` : '';
+      ? `CZ天井: ${m.czCeiling}${u}　CZ時平均: ${m.czAvgCoins ?? '?'}枚<br>` : '';
     const deleteBtn = (isAdmin && m.isCustom)
       ? `<button class="btn-danger" onclick="onDelete('${m.id}', '${m.name.replace(/'/g, "\\'")}')">削除</button>`
       : '';
@@ -430,8 +437,8 @@ function renderMachineList() {
       </div>
       <div class="machine-item-meta">
         ${m.maker || 'メーカー不明'}　／　機械割 ${m.rateMin ?? '?'}%〜${m.rateMax ?? '?'}%<br>
-        天井: ${m.ceiling ?? '?'}G　リセット後: ${m.resetCeiling ? m.resetCeiling + 'G' : '未設定'}<br>
-        ${czLine}コイン持ち: ${m.coinHold ?? '?'}G/50枚　天井時平均: ${m.ceilingCoins ?? '?'}枚
+        天井: ${m.ceiling ?? '?'}${u}　リセット後: ${m.resetCeiling ? m.resetCeiling + u : '未設定'}<br>
+        ${czLine}コイン持ち: ${m.coinHold ?? '?'}${u}/50枚　天井時平均: ${m.ceilingCoins ?? '?'}枚
         ${m.notes ? `<br>📝 ${m.notes}` : ''}
       </div>
     </div>
@@ -548,7 +555,7 @@ function renderSessionList() {
             <button class="btn-danger" onclick="onDeleteSession('${s.id}')">削除</button>
           </div>
           <div class="machine-item-meta">
-            ${s.date}　開始: ${s.startG}G　交換率: ${s.rate}枚<br>
+            ${s.date}　開始: ${s.startG}${s.gameUnit || 'G'}　交換率: ${s.rate}枚<br>
             投資 ${s.investment.toLocaleString()}円 → 回収 ${s.payout.toLocaleString()}円
             <strong class="${evClass(s.actualEV)}">${fmtYen(s.actualEV)}</strong>
             ${s.theoreticalEV != null ? `　<span style="color:var(--text-muted);font-size:11px">（理論 ${fmtYen(s.theoreticalEV)}）</span>` : ''}
@@ -633,6 +640,7 @@ $('form-log')?.addEventListener('submit', e => {
     date: $('log-date').value || new Date().toISOString().slice(0, 10),
     machineId: String(machine.id),
     machineName: machine.name,
+    gameUnit: machine.gameUnit || 'G',
     startG, rate, investment, payout,
     actualEV: payout - investment,
     theoreticalEV,

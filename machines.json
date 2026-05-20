@@ -26,12 +26,13 @@
     "maker": "サミー",
     "rateMin": 97.6, "rateMax": 114.9,
     "ceiling": 1536, "resetCeiling": 1280,
-    "coinHold": 31.5, "atGain": 4.0,
-    "atAvgCoins": 800, "ceilingCoins": 1220,
-    "resetCeilingCoins": 1164,
-    "shutterCeiling": 896, "shutterCoins": 1700,
-    "shutterLabel": "シャッター確認済み（モードB以上・896G天井）",
-    "notes": "天井1536あべし。設定変更後1280あべし天井（リセット狙い目625あべし〜）。ゾーン193〜256あべし。シャッター確認でモードB以上確定（896G天井）。"
+    "coinHold": 47.25, "atGain": 4.0,
+    "atAvgCoins": 545, "ceilingCoins": 900,
+    "resetCeilingCoins": 750,
+    "shutterCeiling": 896, "shutterCoins": 1200,
+    "shutterLabel": "シャッター確認済み（モードB以上・896あべし天井）",
+    "gameUnit": "あべし",
+    "notes": "天井1536あべし（5.6枚：777あべし〜がプラス）。設定変更後1280あべし天井（625あべし〜がプラス）。ゾーン193〜256あべし。シャッター確認でモードB以上確定（896あべし天井・常時プラス）。1G≒1.5あべし（通常時平均）。"
   },
   {
     "id": 4,
@@ -111,9 +112,10 @@
     "maker": "サミー",
     "rateMin": 97.6, "rateMax": 114.9,
     "ceiling": 1280, "resetCeiling": 1280,
-    "coinHold": 31.5, "atGain": 4.0,
-    "atAvgCoins": 800, "ceilingCoins": 1164,
-    "notes": "設定変更後1280あべし天井専用。625あべし〜（5.6枚）がプラス。有利区間ランプ消灯台がターゲット。"
+    "coinHold": 47.25, "atGain": 4.0,
+    "atAvgCoins": 545, "ceilingCoins": 750,
+    "gameUnit": "あべし",
+    "notes": "設定変更後1280あべし天井専用。625あべし〜（5.6枚）がプラス。有利区間ランプ消灯台がターゲット。1G≒1.5あべし（通常時平均）。"
   },
   {
     "id": 12,
@@ -121,8 +123,9 @@
     "maker": "サミー",
     "rateMin": 97.6, "rateMax": 114.9,
     "ceiling": 896, "resetCeiling": 896,
-    "coinHold": 31.5, "atGain": 4.0,
-    "atAvgCoins": 800, "ceilingCoins": 1700,
-    "notes": "シャッター確認済み（モードB以上）896あべし天井確定。常時プラス期待値。"
+    "coinHold": 47.25, "atGain": 4.0,
+    "atAvgCoins": 545, "ceilingCoins": 1200,
+    "gameUnit": "あべし",
+    "notes": "シャッター確認済み（モードB以上）896あべし天井確定。常時プラス期待値。1G≒1.5あべし（通常時平均）。"
   }
 ]
