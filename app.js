@@ -555,10 +555,19 @@ function renderSessionList() {
             <button class="btn-danger" onclick="onDeleteSession('${s.id}')">削除</button>
           </div>
           <div class="machine-item-meta">
-            ${s.date}　開始: ${s.startG}${s.gameUnit || 'G'}　交換率: ${s.rate}枚<br>
+            ${s.date}　交換率: ${s.rate}枚<br>
+            ${(() => {
+              const u = s.gameUnit || 'G';
+              const resultLabel = { hit: '当たり', ceiling: '天井当たり', quit: 'ヤメ' }[s.result] || '';
+              const endPart = s.endG > 0
+                ? ` → <strong>${resultLabel ? resultLabel + ':' : ''}${s.endG}${u}</strong>`
+                : (resultLabel ? ` [${resultLabel}]` : '');
+              return `開始: ${s.startG}${u}${endPart}`;
+            })()}<br>
             投資 ${s.investment.toLocaleString()}円 → 回収 ${s.payout.toLocaleString()}円
             <strong class="${evClass(s.actualEV)}">${fmtYen(s.actualEV)}</strong>
-            ${s.theoreticalEV != null ? `　<span style="color:var(--text-muted);font-size:11px">（理論 ${fmtYen(s.theoreticalEV)}）</span>` : ''}
+            ${s.theoreticalEV != null ? `　<span style="color:var(--text-muted);font-size:11px">（理論EV ${fmtYen(s.theoreticalEV)}）</span>` : ''}
+            ${s.remainEV != null ? `<br><span style="color:var(--text-muted);font-size:11px">ヤメ時残りEV: ${fmtYen(s.remainEV)}</span>` : ''}
             ${s.note ? `<br>📝 ${s.note}` : ''}
           </div>
         </div>
@@ -594,6 +603,8 @@ function updateLogPreview() {
   const investment = parseFloat($('log-investment')?.value);
   const payout = parseFloat($('log-payout')?.value) || 0;
   const startG = parseInt($('log-start-g')?.value) || 0;
+  const endG = parseInt($('log-end-g')?.value) || 0;
+  const result = $('log-result')?.value;
   const rate = parseFloat($('log-rate')?.value) || 5.6;
   const preview = $('log-preview');
   if (!preview) return;
@@ -610,13 +621,25 @@ function updateLogPreview() {
     const theory = calcEV(startG, machine.ceiling, machine.ceilingCoins, machine.coinHold, rate).ev;
     $('log-prev-theory').textContent = fmtYen(theory);
     $('log-prev-theory').className = 'info-value ' + evClass(theory);
+
+    // ヤメ時の残りEV
+    const remainRow = $('log-prev-remain-row');
+    if (result === 'quit' && endG > 0) {
+      const remain = calcEV(endG, machine.ceiling, machine.ceilingCoins, machine.coinHold, rate).ev;
+      $('log-prev-remain').textContent = fmtYen(remain);
+      $('log-prev-remain').className = 'info-value ' + evClass(remain);
+      remainRow.style.display = 'flex';
+    } else {
+      remainRow.style.display = 'none';
+    }
   } else {
     $('log-prev-theory').textContent = '--';
     $('log-prev-theory').className = 'info-value';
+    $('log-prev-remain-row').style.display = 'none';
   }
 }
 
-['log-machine', 'log-investment', 'log-payout', 'log-start-g', 'log-rate'].forEach(id => {
+['log-machine', 'log-investment', 'log-payout', 'log-start-g', 'log-end-g', 'log-result', 'log-rate'].forEach(id => {
   $(`${id}`)?.addEventListener('input', updateLogPreview);
   $(`${id}`)?.addEventListener('change', updateLogPreview);
 });
@@ -630,20 +653,26 @@ $('form-log')?.addEventListener('submit', e => {
   const investment = parseFloat($('log-investment').value);
   const payout = parseFloat($('log-payout').value) || 0;
   const startG = parseInt($('log-start-g').value) || 0;
+  const endG = parseInt($('log-end-g').value) || 0;
+  const result = $('log-result').value || '';
   const rate = parseFloat($('log-rate').value) || 5.6;
 
   if (isNaN(investment)) { showStatus('log-status', '投資額を入力してください', 'err'); return; }
 
   const theoreticalEV = calcEV(startG, machine.ceiling, machine.ceilingCoins, machine.coinHold, rate).ev;
+  const remainEV = (result === 'quit' && endG > 0)
+    ? calcEV(endG, machine.ceiling, machine.ceilingCoins, machine.coinHold, rate).ev
+    : null;
 
   addSession({
     date: $('log-date').value || new Date().toISOString().slice(0, 10),
     machineId: String(machine.id),
     machineName: machine.name,
     gameUnit: machine.gameUnit || 'G',
-    startG, rate, investment, payout,
+    startG, endG, result, rate, investment, payout,
     actualEV: payout - investment,
     theoreticalEV,
+    remainEV,
     note: $('log-note').value.trim(),
   });
 
@@ -653,6 +682,7 @@ $('form-log')?.addEventListener('submit', e => {
   e.target.reset();
   $('log-date').value = new Date().toISOString().slice(0, 10);
   $('log-preview').classList.add('hidden');
+  $('log-prev-remain-row').style.display = 'none';
 });
 
 // ════════════════════════════════════════════

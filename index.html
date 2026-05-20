@@ -145,6 +145,21 @@
             <input type="number" id="log-start-g" placeholder="0" min="0" inputmode="numeric">
           </div>
           <div class="field">
+            <label class="field-label">終了G数</label>
+            <input type="number" id="log-end-g" placeholder="0" min="0" inputmode="numeric">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label">結果</label>
+            <select id="log-result">
+              <option value="">-- 選択 --</option>
+              <option value="hit">当たり（天井前）</option>
+              <option value="ceiling">天井当たり</option>
+              <option value="quit">ヤメ</option>
+            </select>
+          </div>
+          <div class="field">
             <label class="field-label">投資額（円）</label>
             <input type="number" id="log-investment" placeholder="3000" min="0" inputmode="numeric">
           </div>
@@ -159,8 +174,12 @@
             <span id="log-prev-ev" class="info-value">--</span>
           </div>
           <div class="info-row">
-            <span class="info-label">理論EV（参考）</span>
+            <span class="info-label">理論EV（開始時）</span>
             <span id="log-prev-theory" class="info-value">--</span>
+          </div>
+          <div class="info-row" id="log-prev-remain-row" style="display:none">
+            <span class="info-label">ヤメ時の残りEV</span>
+            <span id="log-prev-remain" class="info-value">--</span>
           </div>
         </div>
         <div class="field">
